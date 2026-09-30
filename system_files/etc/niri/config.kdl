@@ -123,6 +123,10 @@ spawn-at-startup "swayidle" "-w" \
 // Notifications are handled by mako, which is D-Bus activated
 // (fr.emersion.mako.service), so it must not be spawned here.
 
+// Clipboard history. cliphist watches wl-clipboard and stores everything
+// copied; Mod+Shift+C below opens the picker (see the binds section).
+spawn-at-startup "wl-paste" "--watch" "cliphist" "store"
+
 hotkey-overlay {
     // The "Important Hotkeys" panel on login is genuinely useful while learning
     // the binds. Uncomment to stop showing it; Mod+Shift+/ brings it back.
@@ -188,6 +192,11 @@ binds {
     // Dismiss notifications.
     Mod+N { spawn "makoctl" "dismiss"; }
     Mod+Shift+N { spawn "makoctl" "dismiss" "--all"; }
+
+    // Clipboard history picker.
+    Mod+Shift+C hotkey-overlay-title="Clipboard History: cliphist" {
+        spawn-sh "cliphist list | fuzzel --dmenu | cliphist decode | wl-copy";
+    }
 
     // Screen reader toggle.
     Super+Alt+S allow-when-locked=true hotkey-overlay-title=null { spawn-sh "pkill orca || exec orca"; }

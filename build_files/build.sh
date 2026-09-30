@@ -66,6 +66,18 @@ dnf5 install -y \
 # regardless of which packages are installed later.
 cp -avf "/ctx/system_files"/. /
 
+### Clipboard manager: cliphist
+# cliphist keeps a history of everything copied via wl-clipboard and hands it
+# back through a dmenu-style picker -- here, fuzzel. It isn't in Fedora's
+# repos, only COPR, so the COPR is enabled just for this install and disabled
+# again immediately after so it doesn't stay enabled on the final image.
+#
+# The watcher daemon is started from niri's config (spawn-at-startup
+# "wl-paste" "--watch" "cliphist" "store"); Mod+Shift+C opens the picker.
+dnf5 -y copr enable alternateved/cliphist
+dnf5 install -y cliphist
+dnf5 -y copr disable alternateved/cliphist
+
 # Notes on the supporting pieces, since the reasoning is not obvious from the
 # package list alone:
 # - xwayland-satellite: niri >= 25.08 starts it on demand and exports $DISPLAY
