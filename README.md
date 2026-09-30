@@ -2,6 +2,114 @@
 
 This repository is meant to be a template for building your own custom [bootc](https://github.com/bootc-dev/bootc) image. This template is the recommended way to make customizations to any image published by the Universal Blue Project.
 
+# The niri tiling session
+
+This image adds [niri](https://github.com/niri-wm/niri), a scrollable-tiling
+Wayland compositor, as a **second session alongside GNOME**. GNOME stays the
+default and is not modified in any way; pick "Niri" from the gear menu on the
+GDM login screen to use it.
+
+Everything comes from the Fedora repos, so there is no COPR to track.
+
+## Configuration
+
+The session is configured image-wide, not per user:
+
+| File | Purpose |
+| --- | --- |
+| `/etc/niri/config.kdl` | Compositor: input, layout, startup, keybinds |
+| `/etc/xdg/waybar/config.jsonc` | Status bar modules |
+| `/etc/xdg/waybar/style.css` | Status bar theme |
+| `/etc/xdg/mako/config` | Notification popups |
+| `/etc/xdg/fuzzel/fuzzel.ini` | Application launcher |
+
+niri reads `~/.config/niri/config.kdl` first and falls back to `/etc/niri/config.kdl`,
+and the other three follow the same pattern. To start tweaking things, copy the
+system files into your home directory:
+
+```bash
+ujust niri-config      # copy system configs into ~/.config (never overwrites)
+ujust niri-validate    # check a niri config for errors
+ujust niri-log         # show this boot's niri session log
+```
+
+Deleting a file from `~/.config` falls back to the image default. niri reloads
+`config.kdl` as soon as you save it.
+
+## Keybindings
+
+`Mod` is the Super (Windows) key. Press <kbd>Mod</kbd>+<kbd>Shift</kbd>+<kbd>/</kbd>
+at any time for the full in-session list.
+
+niri tiles windows in **columns** on a horizontally scrolling strip, rather than
+subdividing the screen. A column can hold several stacked windows.
+
+### Apps and session
+
+| Bind | Action |
+| --- | --- |
+| <kbd>Mod</kbd>+<kbd>Return</kbd> / <kbd>Mod</kbd>+<kbd>T</kbd> | Terminal (Ptyxis) |
+| <kbd>Mod</kbd>+<kbd>D</kbd> / <kbd>Mod</kbd>+<kbd>Space</kbd> | App launcher (fuzzel) |
+| <kbd>Mod</kbd>+<kbd>E</kbd> | Files (Nautilus) |
+| <kbd>Mod</kbd>+<kbd>Q</kbd> | Close window |
+| <kbd>Mod</kbd>+<kbd>O</kbd> | Overview (zoomed-out workspaces) |
+| <kbd>Mod</kbd>+<kbd>N</kbd> / <kbd>Mod</kbd>+<kbd>Shift</kbd>+<kbd>N</kbd> | Dismiss one / all notifications |
+| <kbd>Super</kbd>+<kbd>Alt</kbd>+<kbd>L</kbd> | Lock screen |
+| <kbd>Mod</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd> | Exit niri (asks first) |
+| <kbd>Print</kbd> | Screenshot (<kbd>Ctrl</kbd> screen, <kbd>Alt</kbd> window) |
+
+### Moving around
+
+| Bind | Action |
+| --- | --- |
+| <kbd>Mod</kbd>+<kbd>H</kbd>/<kbd>J</kbd>/<kbd>K</kbd>/<kbd>L</kbd> or arrows | Focus left column / down / up / right column |
+| <kbd>Mod</kbd>+<kbd>Ctrl</kbd>+ those | Move the window |
+| <kbd>Mod</kbd>+<kbd>Shift</kbd>+ those | Focus another monitor |
+| <kbd>Mod</kbd>+<kbd>1</kbd>…<kbd>9</kbd> | Go to workspace |
+| <kbd>Mod</kbd>+<kbd>Ctrl</kbd>+<kbd>1</kbd>…<kbd>9</kbd> | Send column to workspace |
+| <kbd>Mod</kbd>+<kbd>U</kbd> / <kbd>Mod</kbd>+<kbd>I</kbd> | Workspace down / up |
+| <kbd>Mod</kbd>+<kbd>Tab</kbd> | Previous workspace |
+| <kbd>Mod</kbd>+<kbd>Home</kbd> / <kbd>End</kbd> | First / last column |
+
+### Sizing and arranging
+
+| Bind | Action |
+| --- | --- |
+| <kbd>Mod</kbd>+<kbd>R</kbd> | Cycle column width (⅓ → ½ → ⅔) |
+| <kbd>Mod</kbd>+<kbd>-</kbd> / <kbd>Mod</kbd>+<kbd>=</kbd> | Narrow / widen by 10% |
+| <kbd>Mod</kbd>+<kbd>F</kbd> | Maximize column |
+| <kbd>Mod</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd> | Fullscreen |
+| <kbd>Mod</kbd>+<kbd>C</kbd> | Center column |
+| <kbd>Mod</kbd>+<kbd>[</kbd> / <kbd>Mod</kbd>+<kbd>]</kbd> | Pull window into / push out of column |
+| <kbd>Mod</kbd>+<kbd>W</kbd> | Toggle tabbed column |
+| <kbd>Mod</kbd>+<kbd>V</kbd> | Toggle floating |
+
+## What else is included
+
+- **X11 apps** work through `xwayland-satellite`, which niri starts on demand and
+  wires up to `$DISPLAY` itself — no configuration needed.
+- **Notifications** via `mako` (D-Bus activated, so it starts on first use).
+- **Password prompts** via `mate-polkit`; GNOME's agent lives inside
+  `gnome-shell` and so is unavailable here.
+- **Idle behaviour**: lock at 10 minutes, screens off at 15, lock before sleep
+  (`swayidle` + `swaylock`).
+- **Wallpaper**: `swaybg` with a solid colour, because this image's backgrounds
+  are mostly `.jxl`, which swaybg's image loaders may not read. Point
+  `spawn-at-startup "swaybg"` in `config.kdl` at a PNG or JPEG to change it.
+
+### Things left at defaults on purpose
+
+- `prefer-no-csd` is **off**. It looks better under tiling, but it changes how
+  many of the GTK apps on this image draw their window decorations. Uncomment it
+  in `config.kdl` if you want it.
+- Monitors are auto-detected. To pin resolution, scale or position, run
+  `niri msg outputs` inside a niri session to get the real connector names, then
+  add an `output` block to `config.kdl`.
+- The keyboard layout is deliberately **not** set in `config.kdl`, so niri takes
+  it from `localectl` — the same layout GNOME uses.
+
+The niri package installs its own docs at `/usr/share/doc/niri/wiki/`.
+
 # Community
 
 If you have questions about this template after following the instructions, try the following spaces:

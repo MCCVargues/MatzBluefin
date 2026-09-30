@@ -1,0 +1,144 @@
+/*
+ * System-wide waybar theme for the niri session.
+ * Per-user override: ~/.config/waybar/style.css (see `ujust niri-config`).
+ *
+ * Glyphs come from "Symbols Nerd Font Mono", which the Bluefin base already
+ * ships; it is symbols-only, so it is listed as a fallback after the text font.
+ */
+
+@define-color bg        #1e1e2e;
+@define-color bg-alt    #313244;
+@define-color fg        #cdd6f4;
+@define-color fg-dim    #a6adc8;
+@define-color accent    #7fc8ff;
+@define-color warning   #f9e2af;
+@define-color critical  #f38ba8;
+@define-color good      #a6e3a1;
+
+* {
+  font-family: "JetBrains Mono", "Symbols Nerd Font Mono", sans-serif;
+  font-size: 13px;
+  border: none;
+  border-radius: 0;
+  min-height: 0;
+}
+
+window#waybar {
+  background-color: @bg;
+  color: @fg;
+}
+
+/* Workspaces ------------------------------------------------------------- */
+
+#workspaces {
+  margin: 0 4px;
+}
+
+#workspaces button {
+  padding: 0 8px;
+  color: @fg-dim;
+  background-color: transparent;
+  border-bottom: 2px solid transparent;
+}
+
+#workspaces button:hover {
+  background-color: @bg-alt;
+  color: @fg;
+}
+
+#workspaces button.active {
+  color: @accent;
+  border-bottom: 2px solid @accent;
+}
+
+#workspaces button.urgent {
+  color: @critical;
+  border-bottom: 2px solid @critical;
+}
+
+/* Focused window title --------------------------------------------------- */
+
+#window {
+  color: @fg-dim;
+  padding: 0 8px;
+}
+
+window#waybar.empty #window {
+  background-color: transparent;
+}
+
+/* Right-hand modules ----------------------------------------------------- */
+
+#clock,
+#tray,
+#idle_inhibitor,
+#wireplumber,
+#network,
+#cpu,
+#memory,
+#temperature,
+#battery {
+  padding: 0 10px;
+  color: @fg;
+}
+
+#clock {
+  font-weight: bold;
+  color: @accent;
+}
+
+#idle_inhibitor.activated {
+  color: @warning;
+}
+
+#wireplumber.muted,
+#network.disconnected {
+  color: @critical;
+}
+
+#temperature.critical,
+#battery.critical {
+  color: @critical;
+}
+
+#battery.warning {
+  color: @warning;
+}
+
+#battery.charging,
+#battery.plugged {
+  color: @good;
+}
+
+/* Blink on a critical, non-charging battery. */
+@keyframes blink {
+  to {
+    background-color: @critical;
+    color: @bg;
+  }
+}
+
+#battery.critical:not(.charging) {
+  animation-name: blink;
+  animation-duration: 1s;
+  animation-timing-function: steps(12);
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+}
+
+#tray > .passive {
+  -gtk-icon-effect: dim;
+}
+
+#tray > .needs-attention {
+  -gtk-icon-effect: highlight;
+}
+
+tooltip {
+  background-color: @bg;
+  border: 1px solid @bg-alt;
+}
+
+tooltip label {
+  color: @fg;
+}

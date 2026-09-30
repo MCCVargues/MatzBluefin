@@ -1,0 +1,355 @@
+// System-wide niri configuration for this image.
+//
+// niri loads ~/.config/niri/config.kdl first and falls back to this file.
+// To start tweaking it per-user, run: ujust niri-config
+// Full reference: https://niri-wm.github.io/niri/Configuration:-Introduction
+// Local docs (shipped by the niri package): /usr/share/doc/niri/wiki/
+
+input {
+    keyboard {
+        xkb {
+            // Left empty on purpose: niri then takes the layout from
+            // org.freedesktop.locale1, i.e. whatever `localectl set-x11-keymap`
+            // and the GNOME session already use. Keeps both sessions in sync.
+        }
+        numlock
+    }
+
+    touchpad {
+        tap
+        natural-scroll
+        dwt
+    }
+
+    mouse {
+        // accel-profile "flat"
+    }
+
+    // Uncomment for focus-follows-mouse, only for windows already fully on screen.
+    // focus-follows-mouse max-scroll-amount="0%"
+}
+
+// Outputs are left on automatic detection. To pin resolution/scale/position,
+// run `niri msg outputs` inside a niri session to get the real names, then add:
+//
+// output "DP-1" {
+//     mode "3840x2160@144"
+//     scale 1.5
+//     position x=0 y=0
+// }
+
+layout {
+    gaps 12
+
+    center-focused-column "never"
+
+    preset-column-widths {
+        proportion 0.33333
+        proportion 0.5
+        proportion 0.66667
+    }
+
+    default-column-width { proportion 0.5; }
+
+    focus-ring {
+        width 3
+        active-color "#7fc8ff"
+        inactive-color "#505050"
+    }
+
+    border {
+        off
+        width 3
+        active-color "#ffc87f"
+        inactive-color "#505050"
+        urgent-color "#9b0000"
+    }
+
+    shadow {
+        // on
+        softness 30
+        spread 5
+        offset x=0 y=5
+        color "#0007"
+    }
+
+    struts {
+        // Waybar is a layer-shell panel, so niri already reserves space for it.
+        // These are extra outer gaps on top of that.
+    }
+}
+
+// Environment for apps launched from niri. GNOME normally sets some of these
+// for us via gnome-session, so they have to be stated explicitly here.
+environment {
+    // Prefer native Wayland backends over Xwayland.
+    QT_QPA_PLATFORM "wayland;xcb"
+    MOZ_ENABLE_WAYLAND "1"
+    ELECTRON_OZONE_PLATFORM_HINT "auto"
+    // Deliberately not set here: GTK_USE_PORTAL (forces the portal file chooser
+    // on every GTK app, which is a common source of breakage -- the native one
+    // works fine) and XDG_CURRENT_DESKTOP (niri-session already sets it from
+    // DesktopNames=niri in its .desktop file).
+}
+
+// X11 apps: niri >= 25.08 integrates xwayland-satellite automatically. It spawns
+// on demand and exports $DISPLAY itself, so nothing is configured here on purpose.
+
+// --- Startup ------------------------------------------------------------------
+// Note: niri runs as a systemd session and honours xdg-desktop-autostart, so
+// anything with an /etc/xdg/autostart entry valid for "niri" starts on its own.
+
+// Status bar.
+spawn-at-startup "waybar"
+
+// Wallpaper. A solid colour is used because this image ships mostly .jxl
+// backgrounds that swaybg's gdk-pixbuf loaders may not read. To use an image:
+//   spawn-at-startup "swaybg" "-m" "fill" "-i" "/path/to/wallpaper.png"
+spawn-at-startup "swaybg" "-c" "#1e1e2e"
+
+// Polkit authentication agent, needed for any GUI password prompt (mounting
+// disks, bootc/rpm-ostree actions, etc). mate-polkit's own autostart file is
+// OnlyShowIn=MATE, so it will not fire in this session and is started here.
+spawn-at-startup "/usr/libexec/polkit-mate-authentication-agent-1"
+
+// Idle handling: lock after 10 min, blank screens after 15, lock before sleep.
+spawn-at-startup "swayidle" "-w" \
+    "timeout" "600" "swaylock -f" \
+    "timeout" "900" "niri msg action power-off-monitors" \
+    "before-sleep" "swaylock -f"
+
+// Notifications are handled by mako, which is D-Bus activated
+// (fr.emersion.mako.service), so it must not be spawned here.
+
+hotkey-overlay {
+    // The "Important Hotkeys" panel on login is genuinely useful while learning
+    // the binds. Uncomment to stop showing it; Mod+Shift+/ brings it back.
+    // skip-at-startup
+}
+
+// Asking clients to drop their own decorations looks better under tiling, but it
+// changes how a lot of GTK apps on this image draw. Left off as the safer default.
+// prefer-no-csd
+
+screenshot-path "~/Pictures/Screenshots/Screenshot from %Y-%m-%d %H-%M-%S.png"
+
+animations {
+    // off
+}
+
+// --- Window rules -------------------------------------------------------------
+
+// Work around WezTerm's initial configure bug.
+window-rule {
+    match app-id=r#"^org\.wezfurlong\.wezterm$"#
+    default-column-width {}
+}
+
+// Float the Firefox picture-in-picture player.
+window-rule {
+    match app-id=r#"firefox$"# title="^Picture-in-Picture$"
+    open-floating true
+}
+
+// Small GNOME utility dialogs are more pleasant floating than tiled.
+window-rule {
+    match app-id=r#"^org\.gnome\.Calculator$"#
+    match app-id=r#"^org\.gnome\.clocks$"#
+    match app-id=r#"^org\.gnome\.Settings$"#
+    match app-id=r#"^org\.gnome\.DiskUtility$"#
+    match app-id=r#"^gnome-system-monitor$"#
+    open-floating true
+}
+
+// Keep credentials out of screenshots and screencasts.
+window-rule {
+    match app-id=r#"^org\.keepassxc\.KeePassXC$"#
+    match app-id=r#"^org\.gnome\.World\.Secrets$"#
+    match app-id=r#"^org\.gnome\.seahorse\.Application$"#
+    block-out-from "screen-capture"
+}
+
+// --- Key bindings -------------------------------------------------------------
+// "Mod" is Super on a TTY and Alt when niri runs nested in a window.
+
+binds {
+    Mod+Shift+Slash { show-hotkey-overlay; }
+
+    // Apps. Ptyxis is this image's default terminal.
+    Mod+Return hotkey-overlay-title="Open a Terminal: Ptyxis" { spawn "ptyxis" "--new-window"; }
+    Mod+T      hotkey-overlay-title="Open a Terminal: Ptyxis" { spawn "ptyxis" "--new-window"; }
+    Mod+D      hotkey-overlay-title="Run an Application: fuzzel" { spawn "fuzzel"; }
+    Mod+Space  hotkey-overlay-title="Run an Application: fuzzel" { spawn "fuzzel"; }
+    Mod+E      hotkey-overlay-title="Open Files" { spawn "nautilus" "--new-window"; }
+    Super+Alt+L hotkey-overlay-title="Lock the Screen: swaylock" { spawn "swaylock" "-f"; }
+
+    // Dismiss notifications.
+    Mod+N { spawn "makoctl" "dismiss"; }
+    Mod+Shift+N { spawn "makoctl" "dismiss" "--all"; }
+
+    // Screen reader toggle.
+    Super+Alt+S allow-when-locked=true hotkey-overlay-title=null { spawn-sh "pkill orca || exec orca"; }
+
+    // Audio keys (PipeWire / WirePlumber). -l 1.0 caps volume at 100%.
+    XF86AudioRaiseVolume allow-when-locked=true { spawn-sh "wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.05+ -l 1.0"; }
+    XF86AudioLowerVolume allow-when-locked=true { spawn-sh "wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.05-"; }
+    XF86AudioMute        allow-when-locked=true { spawn-sh "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"; }
+    XF86AudioMicMute     allow-when-locked=true { spawn-sh "wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"; }
+
+    // Media keys (any MPRIS player).
+    XF86AudioPlay allow-when-locked=true { spawn-sh "playerctl play-pause"; }
+    XF86AudioStop allow-when-locked=true { spawn-sh "playerctl stop"; }
+    XF86AudioPrev allow-when-locked=true { spawn-sh "playerctl previous"; }
+    XF86AudioNext allow-when-locked=true { spawn-sh "playerctl next"; }
+
+    // Backlight.
+    XF86MonBrightnessUp   allow-when-locked=true { spawn "brightnessctl" "--class=backlight" "set" "+10%"; }
+    XF86MonBrightnessDown allow-when-locked=true { spawn "brightnessctl" "--class=backlight" "set" "10%-"; }
+
+    // Overview: zoomed-out view of workspaces. Also the top-left hot corner.
+    Mod+O repeat=false { toggle-overview; }
+
+    Mod+Q repeat=false { close-window; }
+
+    // Focus.
+    Mod+Left  { focus-column-left; }
+    Mod+Down  { focus-window-down; }
+    Mod+Up    { focus-window-up; }
+    Mod+Right { focus-column-right; }
+    Mod+H     { focus-column-left; }
+    Mod+J     { focus-window-down; }
+    Mod+K     { focus-window-up; }
+    Mod+L     { focus-column-right; }
+
+    // Move.
+    Mod+Ctrl+Left  { move-column-left; }
+    Mod+Ctrl+Down  { move-window-down; }
+    Mod+Ctrl+Up    { move-window-up; }
+    Mod+Ctrl+Right { move-column-right; }
+    Mod+Ctrl+H     { move-column-left; }
+    Mod+Ctrl+J     { move-window-down; }
+    Mod+Ctrl+K     { move-window-up; }
+    Mod+Ctrl+L     { move-column-right; }
+
+    Mod+Home { focus-column-first; }
+    Mod+End  { focus-column-last; }
+    Mod+Ctrl+Home { move-column-to-first; }
+    Mod+Ctrl+End  { move-column-to-last; }
+
+    // Monitors.
+    Mod+Shift+Left  { focus-monitor-left; }
+    Mod+Shift+Down  { focus-monitor-down; }
+    Mod+Shift+Up    { focus-monitor-up; }
+    Mod+Shift+Right { focus-monitor-right; }
+    Mod+Shift+H     { focus-monitor-left; }
+    Mod+Shift+J     { focus-monitor-down; }
+    Mod+Shift+K     { focus-monitor-up; }
+    Mod+Shift+L     { focus-monitor-right; }
+
+    Mod+Shift+Ctrl+Left  { move-column-to-monitor-left; }
+    Mod+Shift+Ctrl+Down  { move-column-to-monitor-down; }
+    Mod+Shift+Ctrl+Up    { move-column-to-monitor-up; }
+    Mod+Shift+Ctrl+Right { move-column-to-monitor-right; }
+    Mod+Shift+Ctrl+H     { move-column-to-monitor-left; }
+    Mod+Shift+Ctrl+J     { move-column-to-monitor-down; }
+    Mod+Shift+Ctrl+K     { move-column-to-monitor-up; }
+    Mod+Shift+Ctrl+L     { move-column-to-monitor-right; }
+
+    // Workspaces.
+    Mod+Page_Down      { focus-workspace-down; }
+    Mod+Page_Up        { focus-workspace-up; }
+    Mod+U              { focus-workspace-down; }
+    Mod+I              { focus-workspace-up; }
+    Mod+Ctrl+Page_Down { move-column-to-workspace-down; }
+    Mod+Ctrl+Page_Up   { move-column-to-workspace-up; }
+    Mod+Ctrl+U         { move-column-to-workspace-down; }
+    Mod+Ctrl+I         { move-column-to-workspace-up; }
+
+    Mod+Shift+Page_Down { move-workspace-down; }
+    Mod+Shift+Page_Up   { move-workspace-up; }
+    Mod+Shift+U         { move-workspace-down; }
+    Mod+Shift+I         { move-workspace-up; }
+
+    Mod+Tab { focus-workspace-previous; }
+
+    // Mouse wheel.
+    Mod+WheelScrollDown      cooldown-ms=150 { focus-workspace-down; }
+    Mod+WheelScrollUp        cooldown-ms=150 { focus-workspace-up; }
+    Mod+Ctrl+WheelScrollDown cooldown-ms=150 { move-column-to-workspace-down; }
+    Mod+Ctrl+WheelScrollUp   cooldown-ms=150 { move-column-to-workspace-up; }
+
+    Mod+WheelScrollRight      { focus-column-right; }
+    Mod+WheelScrollLeft       { focus-column-left; }
+    Mod+Ctrl+WheelScrollRight { move-column-right; }
+    Mod+Ctrl+WheelScrollLeft  { move-column-left; }
+
+    Mod+Shift+WheelScrollDown      { focus-column-right; }
+    Mod+Shift+WheelScrollUp        { focus-column-left; }
+    Mod+Ctrl+Shift+WheelScrollDown { move-column-right; }
+    Mod+Ctrl+Shift+WheelScrollUp   { move-column-left; }
+
+    // Workspaces by index. niri's workspaces are dynamic, so an index past the
+    // last one lands on the bottommost empty workspace.
+    Mod+1 { focus-workspace 1; }
+    Mod+2 { focus-workspace 2; }
+    Mod+3 { focus-workspace 3; }
+    Mod+4 { focus-workspace 4; }
+    Mod+5 { focus-workspace 5; }
+    Mod+6 { focus-workspace 6; }
+    Mod+7 { focus-workspace 7; }
+    Mod+8 { focus-workspace 8; }
+    Mod+9 { focus-workspace 9; }
+    Mod+Ctrl+1 { move-column-to-workspace 1; }
+    Mod+Ctrl+2 { move-column-to-workspace 2; }
+    Mod+Ctrl+3 { move-column-to-workspace 3; }
+    Mod+Ctrl+4 { move-column-to-workspace 4; }
+    Mod+Ctrl+5 { move-column-to-workspace 5; }
+    Mod+Ctrl+6 { move-column-to-workspace 6; }
+    Mod+Ctrl+7 { move-column-to-workspace 7; }
+    Mod+Ctrl+8 { move-column-to-workspace 8; }
+    Mod+Ctrl+9 { move-column-to-workspace 9; }
+
+    // Columns: pull a neighbouring window in, or push one out.
+    Mod+BracketLeft  { consume-or-expel-window-left; }
+    Mod+BracketRight { consume-or-expel-window-right; }
+    Mod+Comma  { consume-window-into-column; }
+    Mod+Period { expel-window-from-column; }
+
+    // Sizing.
+    Mod+R { switch-preset-column-width; }
+    Mod+Shift+R { switch-preset-column-width-back; }
+    Mod+Ctrl+Shift+R { switch-preset-window-height; }
+    Mod+Ctrl+R { reset-window-height; }
+
+    Mod+F { maximize-column; }
+    Mod+Shift+F { fullscreen-window; }
+    Mod+M { maximize-window-to-edges; }
+    Mod+Ctrl+F { expand-column-to-available-width; }
+
+    Mod+C { center-column; }
+    Mod+Ctrl+C { center-visible-columns; }
+
+    Mod+Minus { set-column-width "-10%"; }
+    Mod+Equal { set-column-width "+10%"; }
+    Mod+Shift+Minus { set-window-height "-10%"; }
+    Mod+Shift+Equal { set-window-height "+10%"; }
+
+    // Floating and tabbed.
+    Mod+V       { toggle-window-floating; }
+    Mod+Shift+V { switch-focus-between-floating-and-tiling; }
+    Mod+W       { toggle-column-tabbed-display; }
+
+    // Screenshots.
+    Print { screenshot; }
+    Ctrl+Print { screenshot-screen; }
+    Alt+Print { screenshot-window; }
+
+    // Escape hatch for apps that grab all shortcuts (remote desktop, KVM).
+    Mod+Escape allow-inhibiting=false { toggle-keyboard-shortcuts-inhibit; }
+
+    // Exit (both show a confirmation dialog).
+    Mod+Shift+E { quit; }
+    Ctrl+Alt+Delete { quit; }
+
+    Mod+Shift+P { power-off-monitors; }
+}

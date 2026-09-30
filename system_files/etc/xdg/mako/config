@@ -1,0 +1,35 @@
+# System-wide mako (notification daemon) config for the niri session.
+# Per-user override: ~/.config/mako/config (see `ujust niri-config`).
+# mako is D-Bus activated, so it starts on the first notification.
+# Reference: man 5 mako
+
+font=JetBrains Mono 10
+background-color=#1e1e2eee
+text-color=#cdd6f4
+border-color=#7fc8ff
+progress-color=over #313244
+
+width=380
+height=140
+margin=12
+padding=12
+border-size=2
+border-radius=8
+icon-path=/usr/share/icons/Adwaita
+max-icon-size=48
+
+default-timeout=6000
+ignore-timeout=0
+layer=overlay
+anchor=top-right
+
+[urgency=low]
+border-color=#585b70
+default-timeout=4000
+
+[urgency=critical]
+border-color=#f38ba8
+default-timeout=0
+
+[category=mpris]
+default-timeout=3000
