@@ -102,10 +102,12 @@ environment {
 // Status bar.
 spawn-at-startup "waybar"
 
-// Wallpaper. A solid colour is used because this image ships mostly .jxl
-// backgrounds that swaybg's gdk-pixbuf loaders may not read. To use an image:
-//   spawn-at-startup "swaybg" "-m" "fill" "-i" "/path/to/wallpaper.png"
-spawn-at-startup "swaybg" "-c" "#1e1e2e"
+// Wallpaper. swaybg decodes through gdk-pixbuf, which on Fedora 44 routes to the
+// sandboxed glycin loaders. That covers jxl, webp, avif, heic, png, jpeg, svg,
+// tiff, bmp, ico and more, so the stock Bluefin .jxl backgrounds work directly.
+// Point -i at anything in /usr/share/backgrounds/, or use `-c "#1e1e2e"` for a
+// plain colour instead. Modes for -m: stretch, fill, fit, center, tile.
+spawn-at-startup "swaybg" "-m" "fill" "-i" "/usr/share/backgrounds/bluefin/01-bluefin-night.jxl"
 
 // Polkit authentication agent, needed for any GUI password prompt (mounting
 // disks, bootc/rpm-ostree actions, etc). mate-polkit's own autostart file is

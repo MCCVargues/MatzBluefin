@@ -93,9 +93,11 @@ subdividing the screen. A column can hold several stacked windows.
   `gnome-shell` and so is unavailable here.
 - **Idle behaviour**: lock at 10 minutes, screens off at 15, lock before sleep
   (`swayidle` + `swaylock`).
-- **Wallpaper**: `swaybg` with a solid colour, because this image's backgrounds
-  are mostly `.jxl`, which swaybg's image loaders may not read. Point
-  `spawn-at-startup "swaybg"` in `config.kdl` at a PNG or JPEG to change it.
+- **Wallpaper**: `swaybg`, set to a stock Bluefin background. swaybg decodes via
+  gdk-pixbuf, which on Fedora 44 routes to the sandboxed glycin loaders and
+  covers `jxl`, `webp`, `avif`, `heic`, `png`, `jpeg`, `svg`, `tiff`, `bmp` and
+  `ico` — so anything in `/usr/share/backgrounds/` works. Change the
+  `spawn-at-startup "swaybg"` line in `config.kdl`.
 
 ### Things left at defaults on purpose
 
