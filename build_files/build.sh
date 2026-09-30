@@ -15,6 +15,16 @@ cp -avf "/ctx/system_files"/. /
 # this installs a package from fedora repos
 dnf5 install -y tmux
 
+### Shell: fish, with fzf integration
+# fish's own postinstall scriptlet registers it in /etc/shells, so
+# `chsh -s /usr/bin/fish` works right away for any user.
+#
+# fzf's key bindings (Ctrl-R history search, Ctrl-T file search, Alt-C cd)
+# are wired up for fish via system_files/etc/fish/conf.d/fzf.fish, which
+# runs `fzf --fish | source` -- fzf's own built-in fish integration, rather
+# than sourcing /usr/share/fzf/shell/key-bindings.fish by hand.
+dnf5 install -y fish fzf
+
 # Use a COPR Example:
 #
 # dnf5 -y copr enable ublue-os/staging
@@ -67,6 +77,13 @@ cp -avf "/ctx/system_files"/. /
 #   Its own autostart file is OnlyShowIn=MATE, so niri's config starts it
 #   explicitly; this also keeps it from loading under GNOME.
 # - swaylock ships /etc/pam.d/swaylock, so unlocking authenticates correctly.
+# - gnome-control-center refuses to start outside GNOME/Unity, and its
+#   .desktop ships OnlyShowIn=GNOME so it's hidden from the launcher under
+#   niri. system_files/usr/share/applications/org.gnome.Settings.desktop
+#   overrides it to launch via
+#   `env XDG_CURRENT_DESKTOP=niri:GNOME gnome-control-center` (the GNOME
+#   token keeps xdg-desktop-portal on the niri backend) and drops
+#   OnlyShowIn/DBusActivatable so it shows up and starts under niri too.
 
 #### Example for enabling a System Unit File
 

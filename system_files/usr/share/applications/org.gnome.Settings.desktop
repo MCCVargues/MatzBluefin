@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=Settings
+Comment=GNOME Settings (forced to run under niri)
+Icon=org.gnome.Settings
+Exec=env XDG_CURRENT_DESKTOP=niri:GNOME gnome-control-center
+DBusActivatable=false
+Terminal=false
+Type=Application
+StartupNotify=true
+Categories=GNOME;GTK;Settings;
+Keywords=Preferences;Settings;
