@@ -284,20 +284,20 @@ binds {
     Mod+Tab { focus-workspace-previous; }
 
     // Mouse wheel.
-    Mod+WheelScrollDown      cooldown-ms=150 { focus-workspace-down; }
-    Mod+WheelScrollUp        cooldown-ms=150 { focus-workspace-up; }
-    Mod+Ctrl+WheelScrollDown cooldown-ms=150 { move-column-to-workspace-down; }
-    Mod+Ctrl+WheelScrollUp   cooldown-ms=150 { move-column-to-workspace-up; }
+    Mod+WheelScrollDown      cooldown-ms=200 { focus-workspace-down; }
+    Mod+WheelScrollUp        cooldown-ms=200 { focus-workspace-up; }
+    Mod+Ctrl+WheelScrollDown cooldown-ms=200 { move-column-to-workspace-down; }
+    Mod+Ctrl+WheelScrollUp   cooldown-ms=200 { move-column-to-workspace-up; }
 
-    Mod+WheelScrollRight      { focus-column-right; }
-    Mod+WheelScrollLeft       { focus-column-left; }
-    Mod+Ctrl+WheelScrollRight { move-column-right; }
-    Mod+Ctrl+WheelScrollLeft  { move-column-left; }
+    Mod+WheelScrollRight      cooldown-ms=200 { focus-column-right; }
+    Mod+WheelScrollLeft       cooldown-ms=200 { focus-column-left; }
+    Mod+Ctrl+WheelScrollRight cooldown-ms=200 { move-column-right; }
+    Mod+Ctrl+WheelScrollLeft  cooldown-ms=200 { move-column-left; }
 
-    Mod+Shift+WheelScrollDown      { focus-column-right; }
-    Mod+Shift+WheelScrollUp        { focus-column-left; }
-    Mod+Ctrl+Shift+WheelScrollDown { move-column-right; }
-    Mod+Ctrl+Shift+WheelScrollUp   { move-column-left; }
+    Mod+Shift+WheelScrollDown      cooldown-ms=200 { focus-column-right; }
+    Mod+Shift+WheelScrollUp        cooldown-ms=200 { focus-column-left; }
+    Mod+Ctrl+Shift+WheelScrollDown cooldown-ms=200 { move-column-right; }
+    Mod+Ctrl+Shift+WheelScrollUp   cooldown-ms=200 { move-column-left; }
 
     // Workspaces by index. niri's workspaces are dynamic, so an index past the
     // last one lands on the bottommost empty workspace.
