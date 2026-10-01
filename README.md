@@ -145,8 +145,18 @@ that will not start:
 | `26.1.4.5589` | First build known to fail: *"The validity of the program could not be verified"* |
 | `26.1.6.5639` | Fails the same way (tested here) |
 
-Older installers come from the customer archive in Image-Line's tech support,
-behind your account.
+Image-Line still serves old builds at predictable URLs, with no login, which
+the recipe accepts directly:
+
+```bash
+ujust fl-studio-install \
+  https://install.image-line.com/flstudio/flstudio_win64_26.1.0.5530.exe
+```
+
+`26.1.0.5530`, `26.1.1.5547`, `26.1.3.5570` and `26.1.4.5589` were all still
+being served when this was written; `.../redirect/flstudio_win_installer` is the
+"latest" redirect to avoid. The customer archive in Image-Line's tech support is
+only needed for much older major versions.
 
 The failure is FL's Authenticode check, but the bug is Wine's: its `crypt32`
 hashes a signature's authenticated attributes in sorted rather than original

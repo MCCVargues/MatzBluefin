@@ -76,15 +76,21 @@ fl-studio-install installer="":
     #                Authenticode check failing. Wine 11.0 and 11.8 both fail
     #                identically, so it is not a Wine version to chase.
     #
-    # 26.1.1 through 26.1.3 were never tested either way. Image-Line's forum
-    # names 26.1.0.5530 as the last build that runs; older installers come from
-    # the customer archive in Image-Line's tech support, behind your account.
+    # Others report 26.1.3.5570 working; 26.1.1 and 26.1.2 are untested.
+    # Image-Line serves old builds at
+    # https://install.image-line.com/flstudio/flstudio_win64_<version>.exe
+    # with no login, so a URL is usually the easiest way to pass one in.
     if [[ -z $installer ]]; then
-        echo "Usage: ujust fl-studio-install /path/to/flstudio_win_<version>.exe"
-        echo "       ujust fl-studio-install https://.../flstudio_win_<version>.exe"
+        echo "Usage: ujust fl-studio-install <installer.exe|url>"
         echo
-        echo "Pin the installer at 26.1.0.5530; 26.1.4.5589 and later refuse to"
-        echo "start under Wine. See the FL Studio section of the image README."
+        echo "Do not use Image-Line's \"latest\" download: 26.1.4.5589 and"
+        echo "later refuse to start under Wine. Older builds are still served"
+        echo "by direct URL, no login needed, so this is all it takes:"
+        echo
+        echo "  ujust fl-studio-install \\"
+        echo "    https://install.image-line.com/flstudio/flstudio_win64_26.1.0.5530.exe"
+        echo
+        echo "See the FL Studio section of the image README for which builds work."
         shopt -s nullglob
         candidates=("$HOME/Downloads"/[Ff][Ll]*[Ss]tudio*.exe)
         if (( ${#candidates[@]} )); then
