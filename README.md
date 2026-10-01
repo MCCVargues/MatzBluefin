@@ -140,14 +140,23 @@ that will not start:
 
 | Build | Behaviour under Wine |
 | --- | --- |
-| `26.1.0.5530` | Last build known to work |
-| `26.1.1` – `26.1.3` | Never tested, either way |
+| `26.1.0.5530` | Works |
+| `26.1.3.5570` | Reported working by others, not tested here |
 | `26.1.4.5589` | First build known to fail: *"The validity of the program could not be verified"* |
+| `26.1.6.5639` | Fails the same way (tested here) |
 
-That failure is FL's own Authenticode check, not a Wine bug — Wine 11.0 and
-11.8 fail identically, so there is no Wine version to chase. Image-Line's forum
-names `26.1.0.5530` as the last build that runs, and older installers come from
-the customer archive in their tech support, behind your account.
+Older installers come from the customer archive in Image-Line's tech support,
+behind your account.
+
+The failure is FL's Authenticode check, but the bug is Wine's: its `crypt32`
+hashes a signature's authenticated attributes in sorted rather than original
+encoded order, and FL's signature happens to use a valid-but-unusual ordering.
+Chasing Wine versions does not help — 11.0, 11.8 and 11.18 all fail. The fix
+exists as out-of-tree patches ([Audion](https://github.com/ongohamza/Audion),
+against Wine 11.16/11.18), but no packaged Fedora Wine carries it: the obvious
+candidate, the `patrickl/wine-staging-dev` music-production COPR, has 74
+patches covering d2d1/dcomp and window management and nothing touching
+`crypt32`. So until that lands upstream, pin the version.
 
 The recipe creates the prefix at `~/.local/share/fl-studio/prefix`, sets the two
 registry values below, installs `corefonts tahoma gdiplus vcrun2022 vcrun6sp6
