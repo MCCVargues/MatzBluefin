@@ -126,12 +126,22 @@ fl-studio-install installer="":
     wine reg add 'HKCU\Software\Wine\Drivers' /v Audio /d alsa /f
 
     # tahoma separately from corefonts because FL's UI asks for that font by
-    # name and corefonts does not carry it. (Wine ships a Tahoma replacement in
-    # /usr/share/wine/fonts via wine-tahoma-winefonts; this installs the real
-    # one, which is what the working setup this was taken from used.)
+    # name and corefonts does not carry it. (Wine also ships a Tahoma
+    # replacement in /usr/share/wine/fonts, from wine-tahoma-winefonts.)
+    #
+    # One verb at a time, and a failure is collected rather than fatal. The
+    # font and vcrun verbs need working 32-bit PE support -- winetricks
+    # registers fonts with the syswow64 regedit -- which on this image depends
+    # on the SELinux rule build.sh adds, and that only applies once you have
+    # rebooted into an image built with it. FL Studio itself is 64-bit and runs
+    # without any of these, so the install continues either way.
     echo ":: installing runtime bits with winetricks (this downloads a lot)"
-    winetricks -q -f corefonts tahoma gdiplus vcrun2022 vcrun6sp6 dxvk
-    winetricks -q fontsmooth=rgb renderer=vulkan
+    failed=()
+    for verb in corefonts tahoma gdiplus vcrun2022 vcrun6sp6 dxvk; do
+        echo ":: winetricks $verb"
+        winetricks -q -f "$verb" || failed+=("$verb")
+    done
+    winetricks -q fontsmooth=rgb renderer=vulkan || failed+=("display-settings")
 
     echo ":: registering WineASIO (optional, ignore a failure here)"
     wine regsvr32 wineasio.dll || echo "   WineASIO not registered; see ujust fl-studio-asio"
@@ -147,6 +157,21 @@ fl-studio-install installer="":
         echo "The installer finished but no FL64.exe turned up under"
         echo "$WINEPREFIX/drive_c/Program Files/Image-Line."
         echo "If you installed somewhere else, point FL_STUDIO_EXE at FL64.exe."
+    fi
+
+    if (( ${#failed[@]} )); then
+        echo
+        echo "These winetricks verbs did not complete: ${failed[*]}"
+        echo "FL Studio still runs without them. To check whether 32-bit"
+        echo "support is the reason:"
+        echo
+        echo "  WINEPREFIX=$WINEPREFIX \\"
+        echo "    wine /usr/lib64/wine-wow64/wine/i386-windows/cmd.exe /c ver"
+        echo
+        echo "An execmod or \"noexec filesystem\" error there means you are on"
+        echo "an image built before the SELinux rule in build.sh. Rebuild,"
+        echo "reboot, then re-run just the verbs above with:"
+        echo "  WINEPREFIX=$WINEPREFIX winetricks -q -f <verb>"
     fi
 
 # Register WineASIO in the FL Studio prefix (ASIO -> JACK -> PipeWire)

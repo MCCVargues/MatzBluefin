@@ -123,6 +123,34 @@ dnf5 install -y \
     labwc \
     xorg-x11-server-Xwayland
 
+# SELinux: let wine's 32-bit PE files be mapped executable.
+#
+# Fedora's base policy already grants exactly this, but only at wine's old
+# location:
+#
+#   /usr/lib/wine/.+-windows/.+\.(exe|dll|acm|drv|sys)  ->  textrel_shlib_t
+#
+# SELinux treats /usr/lib64 as equivalent to /usr/lib, so that rule used to
+# cover /usr/lib64/wine/x86_64-windows/ and friends. Fedora 44 installs wine
+# under /usr/lib64/wine-wow64/wine/, which the regex no longer matches, so the
+# files end up lib_t and the kernel denies execmod when wine maps the 32-bit
+# ntdll:
+#
+#   avc: denied { execmod } ... comm="cmd.exe"
+#        tcontext=system_u:object_r:lib_t:s0 tclass=file
+#
+# A 32-bit PE then cannot start at all. FL Studio itself is 64-bit and does not
+# care, but winetricks' font and vcrun verbs do (it registers fonts with the
+# syswow64 regedit), and so does any 32-bit VST. The 64-bit side needs no
+# exception, so this is scoped to i386-windows and nothing else.
+#
+# The rule has to be written with /usr/lib because of that equivalency; semanage
+# rejects the /usr/lib64 spelling. No restorecon here: inside a container build
+# every file is container_file_t regardless, and bootc applies the real labels
+# from the policy this image carries when the image is deployed.
+semanage fcontext -a -f f -t textrel_shlib_t \
+    '/usr/lib/wine-wow64/wine/i386-windows/.+\.(exe|dll|acm|drv|sys)'
+
 ### WineASIO: the optional low-latency audio path for FL Studio
 # ASIO -> JACK -> PipeWire, as an alternative to FL's default (DirectSound via
 # winealsa). Not in Fedora's repos, so it comes from the audinux COPR, enabled

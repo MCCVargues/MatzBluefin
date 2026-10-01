@@ -130,6 +130,11 @@ is the first thing to suspect if something behaves differently.
 ujust fl-studio-install ~/Downloads/flstudio_win_26.1.0.5530.exe
 ```
 
+Do this from an image that already contains the SELinux rule described in
+[32-bit support](#32-bit-support-winetricks-and-plugins), i.e. rebuild and
+reboot first. Without it the 32-bit half of Wine cannot run, and the
+`corefonts`, `tahoma` and `vcrun*` steps are skipped.
+
 **Pin the version.** Following Image-Line's "latest" download gets you a build
 that will not start:
 
@@ -150,6 +155,10 @@ dxvk` plus `fontsmooth=rgb` and `renderer=vulkan` with winetricks, registers
 WineASIO, and then runs your installer. Expect it to download a few hundred MB.
 `tahoma` is listed separately from `corefonts` because FL's UI asks for that
 font by name and corefonts does not carry it.
+
+The winetricks verbs run one at a time and a failure is reported at the end
+rather than aborting the install, since FL Studio is a 64-bit application and
+starts without them.
 
 One note on DXVK: Fedora also ships it as `wine-dxvk*`, wired up through
 `alternatives` for every prefix on the system, but it is not the selected
@@ -185,6 +194,64 @@ rather than an error.
   explicitly.
 - **`Graphics=x11`** because Wine's Wayland driver cannot yet do what FL's UI
   needs.
+
+## 32-bit support, winetricks and plugins
+
+On a stock build of this image **no 32-bit Windows binary can run**, which is
+worth knowing before you reach for a 32-bit VST. `build.sh` carries the fix;
+it applies to images built after it, once booted.
+
+Fedora's SELinux policy grants wine's PE files the `textrel_shlib_t` label they
+need to be mapped executable, but only at wine's old location:
+
+```
+/usr/lib/wine/.+-windows/.+\.(exe|dll|acm|drv|sys)  --  system_u:object_r:textrel_shlib_t:s0
+```
+
+SELinux treats `/usr/lib64` as equivalent to `/usr/lib`, so that rule used to
+cover `/usr/lib64/wine/i386-windows/`. Fedora 44 moved wine to
+`/usr/lib64/wine-wow64/wine/`, which the regex no longer matches, so the files
+are labelled `lib_t` and the kernel refuses `execmod` when wine maps the 32-bit
+`ntdll`:
+
+```
+wine: err:virtual:map_image_into_view failed to set 60000020 protection on
+      L"\??\C:\windows\syswow64\ntdll.dll" section .text, noexec filesystem?
+
+audit: avc: denied { execmod } ... comm="cmd.exe"
+       tcontext=system_u:object_r:lib_t:s0 tclass=file
+```
+
+Wine's own message blames the filesystem, which is a red herring: it fails the
+same way under `$HOME` and under `/tmp`, neither of which is mounted `noexec`.
+Two visible consequences: a new prefix ends up with an empty `syswow64`, and
+`winetricks corefonts` aborts with `wine: failed to open
+"C:\windows\syswow64\regedit.exe"` and status 53 — winetricks registers fonts
+with the 32-bit regedit.
+
+That the label is the whole problem was checked by running the same binary in a
+container with SELinux labelling disabled: `syswow64` then populates normally
+and 32-bit executables run.
+
+`build.sh` adds the missing rule, scoped to the 32-bit directory only, since the
+64-bit side needs no exception:
+
+```bash
+semanage fcontext -a -f f -t textrel_shlib_t \
+    '/usr/lib/wine-wow64/wine/i386-windows/.+\.(exe|dll|acm|drv|sys)'
+```
+
+It has to be written as `/usr/lib` because of that same equivalency — semanage
+rejects the `/usr/lib64` spelling. To check whether the image you are running
+has working 32-bit support:
+
+```bash
+WINEPREFIX=$(fl-studio --print-prefix) \
+  wine /usr/lib64/wine-wow64/wine/i386-windows/cmd.exe /c ver
+```
+
+If that prints a Windows version, you are set; if it fails as above, rebuild and
+reboot, then re-run any skipped verb with `winetricks -q -f <verb>`.
 
 ## Why FL runs in a nested compositor
 
