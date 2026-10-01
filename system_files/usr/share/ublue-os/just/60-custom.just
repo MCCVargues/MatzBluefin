@@ -110,6 +110,10 @@ fl-studio-install installer="":
     # win64 is already the default for a WoW64 wine; stated so a stray
     # WINEARCH in the environment cannot produce a 32-bit prefix.
     export WINEARCH=win64
+    # winemenubuilder disabled so wine does not scatter .desktop files through
+    # ~/.local for everything it runs. wineboot then logs
+    # "Error running cmd ... winemenubuilder.exe -a -r (126)"; that is this
+    # line working, not a failure.
     export WINEDLLOVERRIDES='winemenubuilder.exe=d'
 
     echo ":: creating the Wine prefix at $WINEPREFIX"
@@ -135,11 +139,22 @@ fl-studio-install installer="":
     # on the SELinux rule build.sh adds, and that only applies once you have
     # rebooted into an image built with it. FL Studio itself is 64-bit and runs
     # without any of these, so the install continues either way.
+    #
+    # wineboot copies wine's own bundled fonts into the prefix read-only (they
+    # come from wine-tahoma-winefonts and friends) and winetricks' font verbs
+    # rm them without -f, so rm stops and asks. Make them writable first,
+    # otherwise an install blocks on a prompt halfway through.
+    #
+    # No -f on the verbs: winetricks then skips whatever it already recorded in
+    # the prefix's winetricks.log, so re-running this recipe after a cancelled
+    # installer is quick instead of redoing every download. Force a single verb
+    # by hand if you need to redo one.
     echo ":: installing runtime bits with winetricks (this downloads a lot)"
+    chmod -R u+w "$WINEPREFIX/drive_c/windows/Fonts" 2>/dev/null || true
     failed=()
     for verb in corefonts tahoma gdiplus vcrun2022 vcrun6sp6 dxvk; do
         echo ":: winetricks $verb"
-        winetricks -q -f "$verb" || failed+=("$verb")
+        winetricks -q "$verb" || failed+=("$verb")
     done
     winetricks -q fontsmooth=rgb renderer=vulkan || failed+=("display-settings")
 

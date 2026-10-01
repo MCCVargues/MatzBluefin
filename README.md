@@ -158,7 +158,9 @@ font by name and corefonts does not carry it.
 
 The winetricks verbs run one at a time and a failure is reported at the end
 rather than aborting the install, since FL Studio is a 64-bit application and
-starts without them.
+starts without them. Re-running the recipe is cheap: winetricks skips whatever
+it already recorded in the prefix, so a cancelled installer costs you the
+installer step, not the downloads.
 
 One note on DXVK: Fedora also ships it as `wine-dxvk*`, wired up through
 `alternatives` for every prefix on the system, but it is not the selected
