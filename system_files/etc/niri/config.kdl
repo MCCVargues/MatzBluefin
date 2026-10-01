@@ -167,6 +167,16 @@ window-rule {
     open-floating true
 }
 
+// FL Studio runs inside a nested labwc compositor, because FL positions its
+// own X11 windows and will not re-lay-out on a plain Xwayland resize (see the
+// FL Studio section of the image README). The window niri sees is therefore
+// labwc's, with app-id "labwc" -- a rule matching fl64.exe would never fire.
+// FL's UI wants the room, so give it the full width on open.
+window-rule {
+    match app-id=r#"^labwc$"#
+    open-maximized true
+}
+
 // Keep credentials out of screenshots and screencasts.
 window-rule {
     match app-id=r#"^org\.keepassxc\.KeePassXC$"#

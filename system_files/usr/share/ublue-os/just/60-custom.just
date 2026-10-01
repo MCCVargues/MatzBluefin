@@ -53,3 +53,145 @@ niri-validate config="":
 [group('niri')]
 niri-log:
     journalctl --user-unit=niri -b --no-pager
+
+# --- FL Studio ----------------------------------------------------------------
+# The image ships wine, winetricks, wineasio and the nested labwc compositor;
+# these recipes build the per-user Wine prefix and install FL into it.
+
+# Build the FL Studio Wine prefix and run an installer in it
+[group('fl-studio')]
+fl-studio-install installer="":
+    #!/usr/bin/bash
+    set -euo pipefail
+
+    installer="{{ installer }}"
+    export WINEPREFIX="$(fl-studio --print-prefix)"
+
+    # FL Studio is proprietary, so nothing is downloaded on your behalf, and
+    # "latest" is the wrong thing to fetch anyway:
+    #
+    #   26.1.0.5530  last build known to run under plain Wine
+    #   26.1.4.5589  first build known to refuse to start, with "The validity
+    #                of the program could not be verified" -- its own
+    #                Authenticode check failing. Wine 11.0 and 11.8 both fail
+    #                identically, so it is not a Wine version to chase.
+    #
+    # 26.1.1 through 26.1.3 were never tested either way. Image-Line's forum
+    # names 26.1.0.5530 as the last build that runs; older installers come from
+    # the customer archive in Image-Line's tech support, behind your account.
+    if [[ -z $installer ]]; then
+        echo "Usage: ujust fl-studio-install /path/to/flstudio_win_<version>.exe"
+        echo "       ujust fl-studio-install https://.../flstudio_win_<version>.exe"
+        echo
+        echo "Pin the installer at 26.1.0.5530; 26.1.4.5589 and later refuse to"
+        echo "start under Wine. See the FL Studio section of the image README."
+        shopt -s nullglob
+        candidates=("$HOME/Downloads"/[Ff][Ll]*[Ss]tudio*.exe)
+        if (( ${#candidates[@]} )); then
+            echo
+            echo "Found in ~/Downloads:"
+            printf '  %s\n' "${candidates[@]}"
+        fi
+        exit 1
+    fi
+
+    workdir=""
+    cleanup() { [[ -z $workdir ]] || rm -rf "$workdir"; }
+    trap cleanup EXIT
+
+    if [[ $installer == http://* || $installer == https://* ]]; then
+        workdir="$(mktemp -d)"
+        echo ":: downloading $installer"
+        curl -fL --progress-bar -o "$workdir/installer.exe" "$installer"
+        installer="$workdir/installer.exe"
+    fi
+    [[ -f $installer ]] || { echo "no such file: $installer" >&2; exit 1; }
+
+    # win64 is already the default for a WoW64 wine; stated so a stray
+    # WINEARCH in the environment cannot produce a 32-bit prefix.
+    export WINEARCH=win64
+    export WINEDLLOVERRIDES='winemenubuilder.exe=d'
+
+    echo ":: creating the Wine prefix at $WINEPREFIX"
+    mkdir -p "$WINEPREFIX"
+    wineboot -u
+
+    # Graphics=x11 because Wine's Wayland driver cannot yet do what FL's UI
+    # needs. Audio=alsa is not a preference: on Wine's PulseAudio backend FL's
+    # main thread blocks forever in mmdevapi enumerating devices, so it sits on
+    # the splash screen and never creates its main window. PipeWire serves ALSA
+    # clients regardless. /usr/bin/fl-studio re-checks both on every launch.
+    echo ":: setting the Wine graphics and audio drivers"
+    wine reg add 'HKCU\Software\Wine\Drivers' /v Graphics /d x11 /f
+    wine reg add 'HKCU\Software\Wine\Drivers' /v Audio /d alsa /f
+
+    # tahoma separately from corefonts because FL's UI asks for that font by
+    # name and corefonts does not carry it. (Wine ships a Tahoma replacement in
+    # /usr/share/wine/fonts via wine-tahoma-winefonts; this installs the real
+    # one, which is what the working setup this was taken from used.)
+    echo ":: installing runtime bits with winetricks (this downloads a lot)"
+    winetricks -q -f corefonts tahoma gdiplus vcrun2022 vcrun6sp6 dxvk
+    winetricks -q fontsmooth=rgb renderer=vulkan
+
+    echo ":: registering WineASIO (optional, ignore a failure here)"
+    wine regsvr32 wineasio.dll || echo "   WineASIO not registered; see ujust fl-studio-asio"
+
+    echo ":: running the FL Studio installer"
+    fl-studio wine "$installer"
+
+    if [[ -n "$(find "$WINEPREFIX/drive_c/Program Files/Image-Line" -maxdepth 3 -name FL64.exe -print -quit 2>/dev/null)" ]]; then
+        echo
+        echo "Done. Launch it with 'fl-studio' or from the app launcher."
+    else
+        echo
+        echo "The installer finished but no FL64.exe turned up under"
+        echo "$WINEPREFIX/drive_c/Program Files/Image-Line."
+        echo "If you installed somewhere else, point FL_STUDIO_EXE at FL64.exe."
+    fi
+
+# Register WineASIO in the FL Studio prefix (ASIO -> JACK -> PipeWire)
+[group('fl-studio')]
+fl-studio-asio:
+    #!/usr/bin/bash
+    set -euo pipefail
+    export WINEPREFIX="$(fl-studio --print-prefix)"
+    [[ -d $WINEPREFIX ]] || { echo "no prefix yet; run: ujust fl-studio-install" >&2; exit 1; }
+    # The image installs both halves of the driver into wine's own builtin
+    # directories as wineasio.dll / wineasio.dll.so, so this needs no paths.
+    wine regsvr32 wineasio.dll
+    echo
+    echo "Registered. In FL Studio: Options > Audio settings > Device > WineASIO."
+    echo "Buffer size and channel counts live in HKCU\\Software\\Wine\\WineASIO;"
+    echo "edit them with: WINEPREFIX=$WINEPREFIX wine regedit"
+
+# Copy the nested labwc config into ~/.config for editing
+[group('fl-studio')]
+fl-studio-config:
+    #!/usr/bin/bash
+    set -euo pipefail
+    src="/usr/share/fl-studio/labwc/rc.xml"
+    dest="${XDG_CONFIG_HOME:-$HOME/.config}/fl-studio/labwc/rc.xml"
+    if [[ -e $dest ]]; then
+        echo "skip  $dest (already exists)"
+    else
+        mkdir -p "$(dirname "$dest")"
+        cp "$src" "$dest"
+        echo "copy  $dest"
+    fi
+    echo
+    echo "The launcher prefers this file over the image's copy. Delete it to go"
+    echo "back to the default. labwc reloads it on SIGHUP, or restart FL."
+
+# Delete the FL Studio Wine prefix, FL Studio and all its settings with it
+[group('fl-studio')]
+fl-studio-reset:
+    #!/usr/bin/bash
+    set -euo pipefail
+    prefix="$(fl-studio --print-prefix)"
+    [[ -d $prefix ]] || { echo "nothing to remove at $prefix"; exit 0; }
+    echo "This deletes $prefix, including FL Studio and anything stored inside"
+    echo "the prefix. Projects under ~/Documents are not touched."
+    read -rp "Type 'yes' to continue: " reply
+    [[ $reply == yes ]] || { echo "aborted"; exit 1; }
+    rm -rf "$prefix"
+    echo "removed $prefix"

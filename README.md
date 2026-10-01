@@ -112,6 +112,164 @@ subdividing the screen. A column can hold several stacked windows.
 
 The niri package installs its own docs at `/usr/share/doc/niri/wiki/`.
 
+# FL Studio
+
+FL Studio runs under Wine on this image. The packages, the launcher and the
+nested compositor it needs are part of the image; the prefix is built per-user
+by `ujust fl-studio-install`. FL Studio is proprietary and is not shipped here,
+so you supply the installer.
+
+One systemic difference from the setup this was ported from: Fedora's `wine`
+11.0 is a Staging build — it reports itself as `wine-11.0 (Staging)` — where
+that one ran plain Wine 11. Nothing below depends on the staging patches, but it
+is the first thing to suspect if something behaves differently.
+
+## Installing
+
+```bash
+ujust fl-studio-install ~/Downloads/flstudio_win_26.1.0.5530.exe
+```
+
+**Pin the version.** Following Image-Line's "latest" download gets you a build
+that will not start:
+
+| Build | Behaviour under Wine |
+| --- | --- |
+| `26.1.0.5530` | Last build known to work |
+| `26.1.1` – `26.1.3` | Never tested, either way |
+| `26.1.4.5589` | First build known to fail: *"The validity of the program could not be verified"* |
+
+That failure is FL's own Authenticode check, not a Wine bug — Wine 11.0 and
+11.8 fail identically, so there is no Wine version to chase. Image-Line's forum
+names `26.1.0.5530` as the last build that runs, and older installers come from
+the customer archive in their tech support, behind your account.
+
+The recipe creates the prefix at `~/.local/share/fl-studio/prefix`, sets the two
+registry values below, installs `corefonts tahoma gdiplus vcrun2022 vcrun6sp6
+dxvk` plus `fontsmooth=rgb` and `renderer=vulkan` with winetricks, registers
+WineASIO, and then runs your installer. Expect it to download a few hundred MB.
+`tahoma` is listed separately from `corefonts` because FL's UI asks for that
+font by name and corefonts does not carry it.
+
+One note on DXVK: Fedora also ships it as `wine-dxvk*`, wired up through
+`alternatives` for every prefix on the system, but it is not the selected
+alternative by default. The recipe uses winetricks' `dxvk` verb instead, which
+is prefix-local and is what the setup this was built from used.
+
+## Running
+
+`fl-studio`, or **FL Studio** in the app launcher. The launcher also takes a
+command, to run other Wine tools against the same prefix:
+
+```bash
+fl-studio                              # FL Studio
+fl-studio winecfg                      # winecfg, in the same nested session
+fl-studio wine ~/Downloads/plugin.exe  # install a plugin
+fl-studio --help                       # options and environment variables
+```
+
+## The two settings that decide whether it starts
+
+Both live in `HKCU\Software\Wine\Drivers` in the prefix. `ujust
+fl-studio-install` writes them, and `/usr/bin/fl-studio` re-checks them on every
+launch by reading `user.reg`, because getting them wrong looks like a hang
+rather than an error.
+
+- **`Audio=alsa`** is not a preference. With Wine's PulseAudio backend FL's main
+  thread blocks forever inside mmdevapi enumerating devices — the backtrace runs
+  ntdll ← kernelbase ← mmdevapi ← winmm ×4 ← flengine_x64 — so it sits on the
+  splash screen and the main window is never created. PipeWire serves ALSA
+  clients anyway, so nothing is given up. `winealsa.drv` comes from the
+  `wine-alsa` package, which the `wine` meta-package does *not* pull in: it
+  requires `wine-pulseaudio` instead, so `build.sh` lists `wine-alsa`
+  explicitly.
+- **`Graphics=x11`** because Wine's Wayland driver cannot yet do what FL's UI
+  needs.
+
+## Why FL runs in a nested compositor
+
+This is the niri-specific part, and it is not in any generic Wine guide.
+
+FL positions and sizes its own X11 windows. Under bare Xwayland it repaints on
+resize but never re-lays-out, so resizing its niri column leaves the window
+black. niri's own Xwayland notes say as much: X11 apps that position their own
+windows "will need a nested compositor to run".
+
+So `fl-studio` starts a nested [labwc](https://labwc.github.io/) and runs FL
+inside it. niri tiles labwc like any other window, labwc resizes its nested
+output to match, and FL gets a genuine X11 resize, which it does handle. labwc
+is started with `-S`, so closing FL ends the nested session.
+
+A Wine virtual desktop (`wine explorer /desktop=`) also kills the black, but
+only by being a fixed canvas: shrinking the column clips FL instead of
+re-laying it out.
+
+Two consequences worth knowing:
+
+- The window niri sees is labwc's, with `app-id` `labwc`, so niri rules matching
+  `fl64.exe` never fire. `config.kdl` has one rule for `^labwc$` that opens it
+  maximized.
+- Inside labwc, `Super`+`Shift`+`Q` ends the nested session. FL has no titlebar
+  there, and labwc's own keybinds and its `Alt`-chorded mousebinds are switched
+  off so that FL gets `Alt`+`Tab`, `Alt`+`F4`, `Alt`+`Space` and `Alt`-drag
+  itself.
+
+`/usr/share/fl-studio/labwc/rc.xml` configures that compositor, and explains why
+its maximize rule has to match on window title: FL puts up 41 top-level X11
+windows, all with `WM_CLASS` `fl64.exe` — the main window, its dialogs and about
+30 1×1 helpers. A rule matching only the identifier stretches the welcome dialog
+across the output, and that dialog is one that repaints without re-laying-out,
+so it goes black and looks exactly like the original bug.
+
+`ujust fl-studio-config` copies that file to `~/.config/fl-studio/labwc/rc.xml`,
+which the launcher prefers if it exists.
+
+## Audio
+
+Out of the box FL uses its default driver through `winealsa.drv`, which
+PipeWire serves. For low latency there is **WineASIO** (ASIO → JACK →
+PipeWire), already registered by `ujust fl-studio-install`; pick it under
+*Options → Audio settings → Device*. `ujust fl-studio-asio` re-registers it,
+which is worth doing after a Wine update.
+
+WineASIO needs two fixes to be loadable at all on Fedora, both applied in
+`build.sh`: the audinux package installs into `/usr/lib64/wine/` while Fedora's
+wine looks in `/usr/lib64/wine-wow64/`, and Wine derives a builtin's unix
+library name from the name inside the PE stub — `wineasio.dll`, from
+`wineasio.dll.spec` — while the pair ships as `wineasio64.dll` /
+`wineasio64.dll.so`. Wine looks for `wineasio.dll.so`, finds nothing, and fails
+with *"cannot find builtin library"*. The image installs both halves into wine's
+own builtin directories under the name wine expects, so `wine regsvr32
+wineasio.dll` works in any prefix with no `WINEDLLPATH` and no per-prefix DLL
+copying.
+
+Buffer size and channel counts live in `HKCU\Software\Wine\WineASIO`; edit
+them with `WINEPREFIX=$(fl-studio --print-prefix) wine regedit`.
+
+## Still not fixed
+
+- FL occasionally draws white until you hover it or click something: it repaints
+  on input but not on its own.
+- labwc logs `No free output buffer slot` under wlroots.
+
+Neither is solved, and neither appears to be fatal.
+
+## Files and recipes
+
+| File | Purpose |
+| --- | --- |
+| `/usr/bin/fl-studio` | Launcher: prefix, Wine environment, nested labwc |
+| `/usr/share/fl-studio/labwc/rc.xml` | The nested compositor's configuration |
+| `/usr/share/applications/fl-studio.desktop` | App launcher entry |
+| `~/.local/share/fl-studio/prefix` | The Wine prefix (override with `FL_STUDIO_PREFIX`) |
+
+```bash
+ujust fl-studio-install <installer.exe|url>   # build the prefix and install FL
+ujust fl-studio-asio                          # (re-)register WineASIO
+ujust fl-studio-config                        # copy the labwc config to ~/.config
+ujust fl-studio-reset                         # delete the prefix, FL and all
+```
+
 # Community
 
 If you have questions about this template after following the instructions, try the following spaces:

@@ -1,0 +1,92 @@
+<?xml version="1.0"?>
+<!--
+  labwc configuration for the nested compositor that FL Studio runs inside.
+  Used by /usr/bin/fl-studio as `labwc -C /usr/share/fl-studio/labwc`.
+
+  Why a nested compositor at all: FL positions and sizes its own X11 windows.
+  Under bare Xwayland it repaints on resize but never re-lays-out, so resizing
+  the niri column leaves the window black. niri's own Xwayland notes call this
+  out: X11 apps that position their own windows "will need a nested
+  compositor to run". labwc resizes its nested output to match whatever size
+  niri gives its window, and FL then gets a real X11 resize, which it handles.
+
+  To edit this per-user: `ujust fl-studio-config` copies it to
+  ~/.config/fl-studio/labwc/rc.xml, which the launcher prefers if present.
+  Full reference: /usr/share/doc/labwc/rc.xml.all and labwc-config(5).
+-->
+<labwc_config>
+
+  <core>
+    <!-- FL is the only client; no gaps, no rounded corners clipping it. -->
+    <gap>0</gap>
+  </core>
+
+  <theme>
+    <cornerRadius>0</cornerRadius>
+  </theme>
+
+  <windowRules>
+    <!-- No titlebars: niri already draws a focus ring around the outer
+         window, and FL has its own title bar inside. -->
+    <windowRule identifier="*" serverDecoration="no"/>
+
+    <!--
+      Maximize FL's main window to fill the nested output.
+
+      The match MUST stay scoped by title. FL puts up 41 top-level X11
+      windows, all with WM_CLASS fl64.exe: the main window, its dialogs, and
+      about 30 1x1 helpers. An identifier-only rule stretches the welcome
+      dialog across the output, and that dialog is one that repaints without
+      re-laying-out, so it goes black, looking exactly like the bug this
+      whole arrangement exists to avoid.
+
+      Matching is case-insensitive shell-glob, not regex. If a future FL
+      version titles its main window differently the rule stops applying and
+      FL opens unmaximized (harmless, just maximize it yourself). Run
+      `xprop WM_NAME` inside the session to read the real title.
+    -->
+    <windowRule identifier="fl64.exe" title="FL Studio">
+      <action name="Maximize" direction="both"/>
+    </windowRule>
+  </windowRules>
+
+  <keyboard>
+    <!--
+      Defining any keybind stops labwc loading its defaults, which is the point
+      here: the defaults bind A-Tab, A-F4 and A-Space, and a DAW wants those
+      chords itself. Note <default /> is deliberately absent.
+
+      This leaves one escape hatch, since FL has no titlebar to close and
+      labwc's own binds are gone. It ends the nested session, i.e. kills FL
+      without a save prompt, so it is intentionally awkward to hit.
+    -->
+    <keybind key="W-S-Q">
+      <action name="Exit"/>
+    </keybind>
+  </keyboard>
+
+  <mouse>
+    <default/>
+    <!--
+      Keep the default mousebinds (click-to-focus among FL's many windows
+      depends on them) but drop the Alt-chorded ones. labwc binds A-Left drag
+      to move the window and A-Right drag to resize it, and FL uses Alt-drag
+      itself in the playlist and piano roll.
+    -->
+    <context name="Frame">
+      <mousebind button="A-Left" action="Press">
+        <action name="None"/>
+      </mousebind>
+      <mousebind button="A-Left" action="Drag">
+        <action name="None"/>
+      </mousebind>
+      <mousebind button="A-Right" action="Press">
+        <action name="None"/>
+      </mousebind>
+      <mousebind button="A-Right" action="Drag">
+        <action name="None"/>
+      </mousebind>
+    </context>
+  </mouse>
+
+</labwc_config>

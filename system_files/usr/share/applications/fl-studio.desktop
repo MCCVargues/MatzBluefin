@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=FL Studio
+GenericName=Digital Audio Workstation
+Comment=FL Studio under Wine, in a nested labwc compositor
+# The launcher resolves the Wine prefix, checks that FL is installed and
+# reports through notify-send if it is not, since there is no terminal here.
+Exec=fl-studio
+Icon=audio-x-generic
+Terminal=false
+StartupNotify=false
+Categories=AudioVideo;Audio;Sequencer;
+Keywords=DAW;Wine;Music;FL;Image-Line;

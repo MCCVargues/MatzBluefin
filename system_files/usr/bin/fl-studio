@@ -1,0 +1,161 @@
+#!/usr/bin/bash
+#
+# Launch FL Studio under Wine, inside a nested labwc compositor.
+#
+# The prefix itself is built by `ujust fl-studio-install`; this script only
+# starts things, and keeps the two settings that decide whether FL comes up at
+# all (see ensure_wine_drivers below) in one place.
+#
+# Why nested: FL positions and sizes its own X11 windows, and under bare
+# Xwayland it repaints on resize without re-laying-out, so resizing its niri
+# column leaves the window black. labwc resizes its nested output to match the
+# window niri gives it, which FL sees as a real X11 resize and handles.
+
+set -euo pipefail
+
+self=${0##*/}
+system_labwc_config=/usr/share/fl-studio/labwc
+
+msg() { printf '%s: %s\n' "$self" "$*" >&2; }
+
+# Launched from a .desktop file there is no terminal to print to, so anything
+# fatal also goes to the notification daemon.
+die() {
+    msg "$*"
+    if [[ ! -t 2 ]] && command -v notify-send >/dev/null 2>&1; then
+        notify-send --app-name="FL Studio" --icon=dialog-error "FL Studio" "$*" || true
+    fi
+    exit 1
+}
+
+usage() {
+    cat <<'EOF'
+Usage: fl-studio [options] [command [args...]]
+
+Runs FL Studio under Wine inside a nested labwc compositor. With a command,
+runs that instead of FL, which is useful for one-off Wine tools against the
+same prefix: `fl-studio winecfg`, `fl-studio wine ~/Downloads/plugin.exe`.
+
+Options:
+  --no-nest        Run directly in the current session, without labwc. The
+                   window will not re-lay-out when resized; for debugging.
+  --print-prefix   Print the Wine prefix path and exit.
+  -h, --help       Show this message.
+
+Environment:
+  FL_STUDIO_PREFIX         Wine prefix (default:
+                           ${XDG_DATA_HOME:-~/.local/share}/fl-studio/prefix)
+  FL_STUDIO_EXE            Path to FL64.exe, if autodetection picks wrong
+  FL_STUDIO_LABWC_CONFIG   labwc config directory to use
+  WINEDLLOVERRIDES         Honoured if already set, otherwise set here
+EOF
+}
+
+nest=1
+print_prefix=0
+declare -a cmd=()
+
+while (($#)); do
+    case $1 in
+        -h | --help) usage; exit 0 ;;
+        --no-nest) nest=0; shift ;;
+        --print-prefix) print_prefix=1; shift ;;
+        --) shift; cmd=("$@"); break ;;
+        -*) die "unknown option: $1 (try --help)" ;;
+        *) cmd=("$@"); break ;;
+    esac
+done
+
+prefix=${FL_STUDIO_PREFIX:-${XDG_DATA_HOME:-$HOME/.local/share}/fl-studio/prefix}
+
+if ((print_prefix)); then
+    printf '%s\n' "$prefix"
+    exit 0
+fi
+
+export WINEPREFIX=$prefix
+
+# d2d1 and dwrite as native-then-builtin: FL draws parts of its UI through
+# Direct2D/DirectWrite. winemenubuilder disabled stops Wine scattering .desktop
+# files through ~/.local every time it runs something.
+export WINEDLLOVERRIDES=${WINEDLLOVERRIDES:-'d2d1,dwrite=n,b;winemenubuilder.exe=d'}
+# Wine's fixme channel is noisy enough to bury real errors; err+all stays on.
+export WINEDEBUG=${WINEDEBUG:-fixme-all}
+
+# The two registry values that decide whether FL starts at all:
+#
+#   Audio=alsa     is not a preference. With Wine's PulseAudio backend FL's
+#                  main thread blocks forever inside mmdevapi enumerating
+#                  devices (ntdll <- kernelbase <- mmdevapi <- winmm x4 <-
+#                  flengine_x64), so it sits on the splash screen and the main
+#                  window is never created. PipeWire serves ALSA clients
+#                  anyway, so nothing is lost. Needs winealsa.drv, from the
+#                  wine-alsa package.
+#   Graphics=x11   because Wine's Wayland driver cannot yet do what FL's UI
+#                  needs.
+#
+# `ujust fl-studio-install` sets both. They are re-checked here because a wrong
+# value means an apparently dead splash screen, and reading user.reg is cheaper
+# than starting Wine to ask.
+ensure_wine_drivers() {
+    local reg=$WINEPREFIX/user.reg
+    if [[ -f $reg ]] \
+        && grep -q '^"Audio"="alsa"$' "$reg" \
+        && grep -q '^"Graphics"="x11"$' "$reg"; then
+        return
+    fi
+    msg "setting Wine's audio driver to alsa and graphics driver to x11"
+    wine reg add 'HKCU\Software\Wine\Drivers' /v Graphics /d x11 /f >/dev/null
+    wine reg add 'HKCU\Software\Wine\Drivers' /v Audio /d alsa /f >/dev/null
+}
+
+# The install directory carries the version ("FL Studio 2026", "FL Studio 26",
+# ...), so find the executable rather than hardcoding a path.
+find_fl_exe() {
+    local root=$WINEPREFIX/drive_c/Program\ Files/Image-Line
+    [[ -d $root ]] || return 1
+    local -a hits=()
+    mapfile -t hits < <(find "$root" -maxdepth 3 -name FL64.exe -type f 2>/dev/null | sort)
+    ((${#hits[@]})) || return 1
+    printf '%s\n' "${hits[-1]}"
+}
+
+[[ -d $WINEPREFIX ]] || die "no Wine prefix at $WINEPREFIX; run: ujust fl-studio-install"
+
+if ((${#cmd[@]} == 0)); then
+    exe=${FL_STUDIO_EXE:-$(find_fl_exe || true)}
+    [[ -n $exe ]] || die "FL Studio is not installed in $WINEPREFIX; run: ujust fl-studio-install"
+    [[ -f $exe ]] || die "no such executable: $exe"
+    cmd=(wine "$exe")
+fi
+
+ensure_wine_drivers
+
+if ((nest)) && [[ -z ${WAYLAND_DISPLAY:-} ]]; then
+    msg "not a Wayland session, running without the nested compositor"
+    nest=0
+fi
+
+if ((nest == 0)); then
+    exec "${cmd[@]}"
+fi
+
+labwc_config=${FL_STUDIO_LABWC_CONFIG:-}
+if [[ -z $labwc_config ]]; then
+    labwc_config=${XDG_CONFIG_HOME:-$HOME/.config}/fl-studio/labwc
+    [[ -f $labwc_config/rc.xml ]] || labwc_config=$system_labwc_config
+fi
+
+# labwc parses its -S command with GLib's shell-style parser and then execs it
+# directly: no shell, so no pipes or expansion, but quotes and backslash
+# escapes are honoured, which is exactly what printf %q emits. labwc also exits
+# when this command exits, which is what makes closing FL end the session.
+quoted=$(printf '%q ' "${cmd[@]}")
+
+# labwc sets DISPLAY for its own Xwayland. Dropping the outer session's value
+# first means that if labwc somehow fails to, Wine fails loudly instead of
+# quietly connecting to niri's xwayland-satellite and reproducing the black
+# window this whole arrangement avoids.
+unset DISPLAY
+
+exec labwc -C "$labwc_config" -S "$quoted"

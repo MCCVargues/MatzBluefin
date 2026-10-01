@@ -97,6 +97,65 @@ dnf5 -y copr disable alternateved/cliphist
 #   token keeps xdg-desktop-portal on the niri backend) and drops
 #   OnlyShowIn/DBusActivatable so it shows up and starts under niri too.
 
+### FL Studio under Wine
+# FL Studio itself is proprietary and is installed per-user into a Wine prefix
+# by `ujust fl-studio-install`; this only puts the pieces it needs on the image.
+# /usr/bin/fl-studio then starts FL inside a nested labwc compositor, and
+# /usr/share/fl-studio/labwc/rc.xml configures that compositor. See the README
+# for why the nesting is necessary under niri.
+#
+# Fedora 44's wine is a WoW64 build (/usr/lib64/wine-wow64/, 64-bit unix
+# libraries plus both PE architectures), which is what FL wants. Two
+# non-obvious things about the package list:
+#
+# - The `wine` meta-package requires wine-pulseaudio but *not* wine-alsa, and
+#   FL has to be pointed at ALSA: with Wine's PulseAudio backend FL's main
+#   thread blocks forever inside mmdevapi enumerating devices and the main
+#   window is never created. winealsa.drv comes from wine-alsa, hence the
+#   explicit entry. (PipeWire serves ALSA clients, so nothing is given up.)
+# - labwc execs Xwayland rather than linking it, so it has no RPM dependency
+#   on it. niri's xwayland-satellite happens to pull it in, but FL's setup
+#   should not depend on the niri session being installed, so it is listed.
+dnf5 install -y \
+    wine \
+    wine-alsa \
+    winetricks \
+    labwc \
+    xorg-x11-server-Xwayland
+
+### WineASIO: the optional low-latency audio path for FL Studio
+# ASIO -> JACK -> PipeWire, as an alternative to FL's default (DirectSound via
+# winealsa). Not in Fedora's repos, so it comes from the audinux COPR, enabled
+# only for this install like the cliphist one above.
+#
+# It drags in jack-audio-connection-kit for a dependency it does not really
+# use: the driver dlopens libjack.so.0 by soname, and ldconfig resolves that to
+# PipeWire's implementation in /usr/lib64/pipewire-0.3/jack/, which comes first
+# in the search path via /etc/ld.so.conf.d/pipewire-jack-x86_64.conf. jackd
+# itself is never started. python3-qt5 comes along for `wineasio-settings`.
+dnf5 -y copr enable ycollet/audinux
+dnf5 install -y wineasio
+dnf5 -y copr disable ycollet/audinux
+
+# As shipped the driver cannot be loaded at all, for two separate reasons:
+#
+# 1. The package installs into /usr/lib64/wine/, while Fedora's wine looks in
+#    /usr/lib64/wine-wow64/.
+# 2. Wine derives a builtin's unix library name from the name inside the PE
+#    stub, which is wineasio.dll (it is built from wineasio.dll.spec), but the
+#    pair is shipped as wineasio64.dll / wineasio64.dll.so. Wine looks for
+#    wineasio.dll.so, finds nothing, and fails with "cannot find builtin
+#    library".
+#
+# Installing both halves into wine's own builtin directories under the name
+# wine expects means `wine regsvr32 wineasio.dll` works in any prefix, with no
+# WINEDLLPATH and no copying DLLs into each prefix's system32. Registering it
+# in a prefix is still per-user: `ujust fl-studio-asio`.
+install -D -m0755 /usr/lib64/wine/x86_64-windows/wineasio64.dll \
+    /usr/lib64/wine-wow64/wine/x86_64-windows/wineasio.dll
+install -D -m0755 /usr/lib64/wine/x86_64-unix/wineasio64.dll.so \
+    /usr/lib64/wine-wow64/wine/x86_64-unix/wineasio.dll.so
+
 #### Example for enabling a System Unit File
 
 systemctl enable podman.socket
