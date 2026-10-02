@@ -1,0 +1,8 @@
+# The MX Master 3S firmware sends an oversized first hi-res scroll event on
+# every wheel burst (~3x a normal step). Bitwig, via xwayland-satellite, turns
+# that into big jumps on slow or back-and-forth scrolling. Fall back to the
+# plain per-click REL_WHEEL events for this mouse.
+[MX Master 3S no hires scroll]
+MatchUdevType=mouse
+MatchName=Logitech MX Master 3S
+AttrEventCode=-REL_WHEEL_HI_RES;-REL_HWHEEL_HI_RES;
