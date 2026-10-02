@@ -102,6 +102,11 @@ environment {
 // Status bar.
 spawn-at-startup "waybar"
 
+// Tray applets: nm-applet is also the NetworkManager secrets agent (wifi
+// passwords); blueman-applet is the Bluetooth pairing agent.
+spawn-at-startup "nm-applet" "--indicator"
+spawn-at-startup "blueman-applet"
+
 // Wallpaper. swaybg decodes through gdk-pixbuf, which on Fedora 44 routes to the
 // sandboxed glycin loaders. That covers jxl, webp, avif, heic, png, jpeg, svg,
 // tiff, bmp, ico and more, so the stock Bluefin .jxl backgrounds work directly.
@@ -304,10 +309,19 @@ binds {
     Mod+Ctrl+WheelScrollRight cooldown-ms=200 { move-column-right; }
     Mod+Ctrl+WheelScrollLeft  cooldown-ms=200 { move-column-left; }
 
-    Mod+Shift+WheelScrollDown      cooldown-ms=200 { focus-column-right; }
-    Mod+Shift+WheelScrollUp        cooldown-ms=200 { focus-column-left; }
-    Mod+Ctrl+Shift+WheelScrollDown cooldown-ms=200 { move-column-right; }
-    Mod+Ctrl+Shift+WheelScrollUp   cooldown-ms=200 { move-column-left; }
+    // Resize: vertical scroll changes height, horizontal scroll changes width.
+    Mod+Shift+WheelScrollUp    { set-window-height "+2%"; }
+    Mod+Shift+WheelScrollDown  { set-window-height "-2%"; }
+    Mod+Shift+WheelScrollRight { set-window-width "+2%"; }
+    Mod+Shift+WheelScrollLeft  { set-window-width "-2%"; }
+
+    // Overview: scroll down opens it, scroll up closes it.
+    Mod+Alt+WheelScrollDown cooldown-ms=200 { open-overview; }
+    Mod+Alt+WheelScrollUp   cooldown-ms=200 { close-overview; }
+
+    // Send the column to the adjacent monitor.
+    Mod+Ctrl+Shift+WheelScrollRight cooldown-ms=200 { move-column-to-monitor-right; }
+    Mod+Ctrl+Shift+WheelScrollLeft  cooldown-ms=200 { move-column-to-monitor-left; }
 
     // Workspaces by index. niri's workspaces are dynamic, so an index past the
     // last one lands on the bottommost empty workspace.

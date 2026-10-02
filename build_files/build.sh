@@ -58,7 +58,11 @@ dnf5 install -y \
     brightnessctl \
     playerctl \
     wl-clipboard \
-    wlr-randr
+    wlr-randr \
+    blueman \
+    pavucontrol \
+    network-manager-applet \
+    wdisplays
 
 # The waybar and fuzzel packages each own a config file under /etc/xdg, which
 # the install above just wrote over the copies taken from system_files/ at the

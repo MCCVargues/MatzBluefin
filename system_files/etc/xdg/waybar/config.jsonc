@@ -13,6 +13,7 @@
     "tray",
     "idle_inhibitor",
     "wireplumber",
+    "bluetooth",
     "network",
     "cpu",
     "memory",
@@ -67,7 +68,7 @@
     "format": " {volume}%",
     "format-muted": "",
     "on-click": "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle",
-    "on-click-right": "pavucontrol || gnome-control-center sound",
+    "on-click-right": "pavucontrol",
     "on-scroll-up": "wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.05+ -l 1.0",
     "on-scroll-down": "wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.05-",
     "max-volume": 100
@@ -81,7 +82,17 @@
     "tooltip-format-wifi": "{essid} ({signalStrength}%)\n{ipaddr}",
     "tooltip-format-ethernet": "{ifname}\n{ipaddr}",
     "tooltip-format-disconnected": "Disconnected",
-    "on-click": "gnome-control-center wifi"
+    "on-click": "nm-connection-editor"
+  },
+
+  "bluetooth": {
+    "format": "",
+    "format-connected": " {num_connections}",
+    "format-disabled": "",
+    "tooltip-format": "{controller_alias}\t{controller_address}",
+    "tooltip-format-connected": "{controller_alias}\n{device_enumerate}",
+    "tooltip-format-enumerate-connected": "{device_alias}\t{device_address}",
+    "on-click": "blueman-manager"
   },
 
   "cpu": {

@@ -101,17 +101,40 @@ fl-studio-install installer="":
         exit 1
     fi
 
-    workdir=""
-    cleanup() { [[ -z $workdir ]] || rm -rf "$workdir"; }
-    trap cleanup EXIT
-
+    # Cache downloads under ~/.cache rather than a temp dir: these installers
+    # are over a gigabyte, and picking a working build can take more than one
+    # attempt. curl -C - resumes a partial file, and a complete one is reused.
     if [[ $installer == http://* || $installer == https://* ]]; then
-        workdir="$(mktemp -d)"
-        echo ":: downloading $installer"
-        curl -fL --progress-bar -o "$workdir/installer.exe" "$installer"
-        installer="$workdir/installer.exe"
+        cache="${XDG_CACHE_HOME:-$HOME/.cache}/fl-studio"
+        mkdir -p "$cache"
+        target="$cache/${installer##*/}"
+        if [[ -s $target ]]; then
+            echo ":: using cached $target"
+            echo "   (delete it to force a fresh download)"
+        else
+            echo ":: downloading $installer"
+            echo "   to $target"
+        fi
+        curl -fL -C - --progress-bar -o "$target" "$installer"
+        installer="$target"
     fi
     [[ -f $installer ]] || { echo "no such file: $installer" >&2; exit 1; }
+
+    # FL's installer will not overwrite a newer build in place: it leaves the
+    # existing FL64.exe alone, so installing an older version over a newer one
+    # silently changes nothing and you go on launching the old binary. So any
+    # existing install is cleared first and this is always a clean install.
+    # Done after the download, so a failed fetch cannot leave you with nothing.
+    # The FL64.exe test keeps "FL Studio ASIO", which is a separate component.
+    progdir="$WINEPREFIX/drive_c/Program Files/Image-Line"
+    if [[ -d $progdir ]]; then
+        for d in "$progdir"/FL\ Studio*; do
+            [[ -f "$d/FL64.exe" ]] || continue
+            echo ":: removing the existing install at ${d#"$WINEPREFIX/drive_c/"}"
+            echo "   (projects live in ~/Documents and are not touched)"
+            rm -rf "$d"
+        done
+    fi
 
     # win64 is already the default for a WoW64 wine; stated so a stray
     # WINEARCH in the environment cannot produce a 32-bit prefix.
