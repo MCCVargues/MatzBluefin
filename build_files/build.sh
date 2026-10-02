@@ -25,6 +25,13 @@ dnf5 install -y tmux
 # than sourcing /usr/share/fzf/shell/key-bindings.fish by hand.
 dnf5 install -y fish fzf
 
+### Logitech devices: Solaar
+# Manages Logitech Unifying/Bolt receivers and Bluetooth devices. The Fedora
+# package ships the udev rules (/usr/lib/udev/rules.d/42-logitech-unify-
+# permissions.rules) that grant the logged-in user hidraw access, so no extra
+# setup is needed.
+dnf5 install -y solaar
+
 # Use a COPR Example:
 #
 # dnf5 -y copr enable ublue-os/staging
