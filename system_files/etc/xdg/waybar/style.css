@@ -71,6 +71,9 @@ window#waybar.empty #window {
 
 #clock,
 #tray,
+#custom-quick,
+#custom-power,
+#bluetooth,
 #idle_inhibitor,
 #wireplumber,
 #network,
@@ -124,6 +127,29 @@ window#waybar.empty #window {
   animation-timing-function: steps(12);
   animation-iteration-count: infinite;
   animation-direction: alternate;
+}
+
+#custom-quick {
+  color: @accent;
+}
+
+#custom-power {
+  color: @critical;
+  padding: 0 12px;
+}
+
+#custom-power:hover {
+  background-color: @bg-alt;
+}
+
+menu {
+  background-color: @bg;
+  color: @fg;
+  border: 1px solid @bg-alt;
+}
+
+menu menuitem:hover {
+  background-color: @bg-alt;
 }
 
 #tray > .passive {

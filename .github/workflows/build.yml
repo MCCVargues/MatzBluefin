@@ -73,7 +73,7 @@ jobs:
 
       # This is optional, this provides smaller delta updates
       - name: Rechunk with rpm-ostree
-        id: rechunk
+        id: rechunk                                                                                                                                                                                                        
         run: |
           just ostree-rechunk \
             ${IMAGE_NAME} \

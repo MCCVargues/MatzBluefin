@@ -11,15 +11,49 @@
   "modules-center": ["clock"],
   "modules-right": [
     "tray",
-    "idle_inhibitor",
-    "wireplumber",
-    "bluetooth",
-    "network",
+    "group/quick",
     "cpu",
     "memory",
     "temperature",
-    "battery"
+    "battery",
+    "custom/power"
   ],
+
+  // Quick settings: hover/click the leader icon to slide the toggles open.
+  "group/quick": {
+    "orientation": "inherit",
+    "drawer": {
+      "transition-duration": 300,
+      "transition-left-to-right": false,
+      "click-to-reveal": true
+    },
+    "modules": [
+      "custom/quick",
+      "idle_inhibitor",
+      "wireplumber",
+      "bluetooth",
+      "network"
+    ]
+  },
+
+  "custom/quick": {
+    "format": "",
+    "tooltip-format": "Quick settings"
+  },
+
+  "custom/power": {
+    "format": "⏻",
+    "tooltip-format": "Power",
+    "menu": "on-click",
+    "menu-file": "/etc/xdg/waybar/power-menu.xml",
+    "menu-actions": {
+      "lock": "swaylock -f",
+      "suspend": "systemctl suspend",
+      "logout": "niri msg action quit --skip-confirmation",
+      "reboot": "systemctl reboot",
+      "shutdown": "systemctl poweroff"
+    }
+  },
 
   "niri/workspaces": {
     "format": "{icon}",

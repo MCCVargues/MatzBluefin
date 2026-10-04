@@ -9,6 +9,7 @@ niri-config:
         ["niri/config.kdl"]="/etc/niri/config.kdl"
         ["waybar/config.jsonc"]="/etc/xdg/waybar/config.jsonc"
         ["waybar/style.css"]="/etc/xdg/waybar/style.css"
+        ["waybar/power-menu.xml"]="/etc/xdg/waybar/power-menu.xml"
         ["mako/config"]="/etc/xdg/mako/config"
         ["fuzzel/fuzzel.ini"]="/etc/xdg/fuzzel/fuzzel.ini"
     )

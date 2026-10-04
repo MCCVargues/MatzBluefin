@@ -32,6 +32,10 @@ dnf5 install -y fish fzf
 # setup is needed.
 dnf5 install -y solaar
 
+### CAD: OpenSCAD
+# Script-based parametric 3D modeller. In Fedora's repos, so no COPR needed.
+dnf5 install -y openscad
+
 # Use a COPR Example:
 #
 # dnf5 -y copr enable ublue-os/staging
@@ -41,9 +45,10 @@ dnf5 install -y solaar
 
 ### Tiling window manager: niri
 # niri is a scrollable-tiling Wayland compositor. It ships its own
-# /usr/share/wayland-sessions/niri.desktop, so GDM lists "Niri" automatically
-# and GNOME remains the default session -- nothing about the GNOME desktop
-# changes. Everything below is in the Fedora repos, so no COPR is needed.
+# /usr/share/wayland-sessions/niri.desktop, so GDM lists "Niri" automatically.
+# Niri is also the default session (see the default.desktop symlink below);
+# GNOME stays installed and selectable from the GDM gear menu. Everything
+# below is in the Fedora repos, so no COPR is needed.
 #
 # Session configuration lives in system_files/:
 #   /etc/niri/config.kdl        compositor, keybinds, startup
@@ -76,6 +81,11 @@ dnf5 install -y \
 # top of this script. Re-apply system_files/ so this image's configuration wins
 # regardless of which packages are installed later.
 cp -avf "/ctx/system_files"/. /
+
+# Make niri the default GDM session. GDM falls back to default.desktop when a
+# user has no remembered session (new users, fresh installs). Users who already
+# picked a session keep it until they choose Niri once from the GDM gear menu.
+ln -sf niri.desktop /usr/share/wayland-sessions/default.desktop
 
 ### Clipboard manager: cliphist
 # cliphist keeps a history of everything copied via wl-clipboard and hands it
