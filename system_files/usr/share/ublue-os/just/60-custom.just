@@ -55,6 +55,31 @@ niri-validate config="":
 niri-log:
     journalctl --user-unit=niri -b --no-pager
 
+# Install fzf and the image's fish fzf integration into toolbox containers
+# (all of them, or just the named one). Toolboxes share $HOME, so ~/.config/fish
+# already carries over; fish itself ships in the toolbox image, but fzf and
+# /etc/fish/conf.d/fzf.fish come from this image and do not.
+[group('toolbox')]
+toolbox-fish name="":
+    #!/usr/bin/bash
+    set -euo pipefail
+    src="/etc/fish/conf.d/fzf.fish"
+    [[ -f $src ]] || { echo "missing $src" >&2; exit 1; }
+    if [[ -n "{{ name }}" ]]; then
+        names=("{{ name }}")
+    else
+        mapfile -t names < <(toolbox list -c | awk 'NR>1 {print $2}')
+    fi
+    for c in "${names[@]}"; do
+        echo ":: $c"
+        toolbox run -c "$c" sudo sh -c \
+            'command -v fish >/dev/null || dnf install -y fish
+             command -v fzf >/dev/null || dnf install -y fzf
+             mkdir -p /etc/fish/conf.d' \
+            || { echo "   failed, skipping"; continue; }
+        toolbox run -c "$c" sudo tee /etc/fish/conf.d/fzf.fish < "$src" >/dev/null
+    done
+
 # --- FL Studio ----------------------------------------------------------------
 # The image ships wine, winetricks, wineasio and the nested labwc compositor;
 # these recipes build the per-user Wine prefix and install FL into it.

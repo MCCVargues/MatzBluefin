@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+# Move the focused tiled window one step through the layout in reading order:
+# left to right, top to bottom within each column. Usage: niri-window-step left|right
+#
+# niri has no single action for this, so it is composed from move-window-up/down
+# (inside a column) and consume-or-expel-window-left/right (across columns).
+set -u
+
+dir=${1:-}
+case $dir in left | right) ;; *) echo "usage: ${0##*/} left|right" >&2; exit 2 ;; esac
+
+act() { niri msg action "$@" >/dev/null; }
+
+# Sets col, row (1-based), tiles (windows in this column), cols (columns on
+# the workspace). Returns non-zero when the focused window is not tiled.
+state() {
+    local out
+    out=$(niri msg --json windows | jq -r '
+        (map(select(.is_focused)) | first) as $f
+        | if $f == null or $f.layout.pos_in_scrolling_layout == null then empty else
+            $f.layout.pos_in_scrolling_layout as $p
+            | [map(select(.workspace_id == $f.workspace_id and .layout.pos_in_scrolling_layout != null)
+                   | .layout.pos_in_scrolling_layout) as $all
+               | $p[0], $p[1],
+                 ($all | map(select(.[0] == $p[0])) | length),
+                 ($all | map(.[0]) | max)] | @tsv
+          end') || return 1
+    [ -n "$out" ] || return 1
+    read -r col row tiles cols <<<"$out"
+}
+
+# After landing in a neighbouring column, slide to its top (right) or bottom (left).
+settle() {
+    state || return 0
+    if [ "$dir" = right ]; then
+        while [ "$row" -gt 1 ]; do act move-window-up; row=$((row - 1)); done
+    else
+        while [ "$row" -lt "$tiles" ]; do act move-window-down; row=$((row + 1)); done
+    fi
+}
+
+state || exit 0
+
+# Each horizontal step passes through a state where the window sits alone in
+# its own full-height column, so side-by-side layouts stay reachable: the
+# window walks down its column, is expelled into a column of its own, and only
+# the next step stacks it into the neighbouring column.
+if [ "$dir" = right ]; then
+    if [ "$row" -lt "$tiles" ]; then act move-window-down; exit 0; fi
+    if [ "$tiles" -gt 1 ]; then act consume-or-expel-window-right; exit 0; fi
+    [ "$col" -lt "$cols" ] || exit 0
+    act consume-or-expel-window-right
+else
+    if [ "$row" -gt 1 ]; then act move-window-up; exit 0; fi
+    if [ "$tiles" -gt 1 ]; then act consume-or-expel-window-left; exit 0; fi
+    [ "$col" -gt 1 ] || exit 0
+    act consume-or-expel-window-left
+fi
+settle

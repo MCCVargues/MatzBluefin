@@ -39,7 +39,7 @@ input {
 // }
 
 layout {
-    gaps 12
+    gaps 4
 
     center-focused-column "never"
 
@@ -52,7 +52,7 @@ layout {
     default-column-width { proportion 0.5; }
 
     focus-ring {
-        width 3
+        width 1
         active-color "#7fc8ff"
         inactive-color "#505050"
     }
@@ -140,7 +140,7 @@ hotkey-overlay {
 
 // Asking clients to drop their own decorations looks better under tiling, but it
 // changes how a lot of GTK apps on this image draw. Left off as the safer default.
-// prefer-no-csd
+prefer-no-csd
 
 screenshot-path "~/Pictures/Screenshots/Screenshot from %Y-%m-%d %H-%M-%S.png"
 
@@ -149,6 +149,12 @@ animations {
 }
 
 // --- Window rules -------------------------------------------------------------
+
+// Same slight corner radius on every window; niri clips to it so the focus ring follows the corners.
+window-rule {
+    geometry-corner-radius 6
+    clip-to-geometry true
+}
 
 // Work around WezTerm's initial configure bug.
 window-rule {
@@ -248,14 +254,14 @@ binds {
     Mod+L     { focus-column-or-monitor-right; }
 
     // Move.
-    Mod+Ctrl+Left  { move-column-left-or-to-monitor-left; }
+    Mod+Ctrl+Left  { move-column-left; }
     Mod+Ctrl+Down  { move-window-down; }
     Mod+Ctrl+Up    { move-window-up; }
-    Mod+Ctrl+Right { move-column-right-or-to-monitor-right; }
-    Mod+Ctrl+H     { move-column-left-or-to-monitor-left; }
+    Mod+Ctrl+Right { move-column-right; }
+    Mod+Ctrl+H     { move-column-left; }
     Mod+Ctrl+J     { move-window-down; }
     Mod+Ctrl+K     { move-window-up; }
-    Mod+Ctrl+L     { move-column-right-or-to-monitor-right; }
+    Mod+Ctrl+L     { move-column-right; }
 
     Mod+Home { focus-column-first; }
     Mod+End  { focus-column-last; }
@@ -304,10 +310,10 @@ binds {
     Mod+Ctrl+WheelScrollDown cooldown-ms=200 { move-column-to-workspace-down; }
     Mod+Ctrl+WheelScrollUp   cooldown-ms=200 { move-column-to-workspace-up; }
 
-    Mod+WheelScrollRight      cooldown-ms=200 { focus-column-or-monitor-right; }
-    Mod+WheelScrollLeft       cooldown-ms=200 { focus-column-or-monitor-left; }
-    Mod+Ctrl+WheelScrollRight cooldown-ms=200 { move-column-right-or-to-monitor-right; }
-    Mod+Ctrl+WheelScrollLeft  cooldown-ms=200 { move-column-left-or-to-monitor-left; }
+    Mod+WheelScrollRight      cooldown-ms=200 { focus-window-down-or-column-right; }
+    Mod+WheelScrollLeft       cooldown-ms=200 { focus-window-up-or-column-left; }
+    Mod+Ctrl+WheelScrollRight cooldown-ms=200 { spawn "niri-window-step" "right"; }
+    Mod+Ctrl+WheelScrollLeft  cooldown-ms=200 { spawn "niri-window-step" "left"; }
 
     // Resize: vertical scroll changes height, horizontal scroll changes width.
     Mod+Shift+WheelScrollUp    { set-window-height "+2%"; }
