@@ -129,7 +129,7 @@ spawn-at-startup "swayidle" "-w" \
 // (fr.emersion.mako.service), so it must not be spawned here.
 
 // Clipboard history. cliphist watches wl-clipboard and stores everything
-// copied; Mod+Shift+C below opens the picker (see the binds section).
+// copied; Mod+Y below opens the picker (see the binds section).
 spawn-at-startup "wl-paste" "--watch" "cliphist" "store"
 
 hotkey-overlay {
@@ -215,7 +215,7 @@ binds {
     Mod+Shift+N { spawn "makoctl" "dismiss" "--all"; }
 
     // Clipboard history picker.
-    Mod+Shift+C hotkey-overlay-title="Clipboard History: cliphist" {
+    Mod+Y hotkey-overlay-title="Clipboard History: cliphist" {
         spawn-sh "cliphist list | fuzzel --dmenu | cliphist decode | wl-copy";
     }
 
@@ -371,17 +371,18 @@ binds {
     Mod+M { maximize-window-to-edges; }
     Mod+Ctrl+F { expand-column-to-available-width; }
 
-    Mod+C { center-column; }
-    Mod+Ctrl+C { center-visible-columns; }
+    // Not C: Super+C is copy, see /etc/keyd.
+    Mod+G { center-column; }
+    Mod+Ctrl+G { center-visible-columns; }
 
     Mod+Minus { set-column-width "-10%"; }
     Mod+Equal { set-column-width "+10%"; }
     Mod+Shift+Minus { set-window-height "-10%"; }
     Mod+Shift+Equal { set-window-height "+10%"; }
 
-    // Floating and tabbed.
-    Mod+V       { toggle-window-floating; }
-    Mod+Shift+V { switch-focus-between-floating-and-tiling; }
+    // Floating and tabbed. (Not C/V: Super+C/V are copy/paste, see /etc/keyd.)
+    Mod+B       { toggle-window-floating; }
+    Mod+Shift+B { switch-focus-between-floating-and-tiling; }
     Mod+W       { toggle-column-tabbed-display; }
 
     // Screenshots.

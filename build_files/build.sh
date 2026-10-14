@@ -94,10 +94,20 @@ ln -sf niri.desktop /usr/share/wayland-sessions/default.desktop
 # again immediately after so it doesn't stay enabled on the final image.
 #
 # The watcher daemon is started from niri's config (spawn-at-startup
-# "wl-paste" "--watch" "cliphist" "store"); Mod+Shift+C opens the picker.
+# "wl-paste" "--watch" "cliphist" "store"); Mod+Y opens the picker.
 dnf5 -y copr enable alternateved/cliphist
 dnf5 install -y cliphist
 dnf5 -y copr disable alternateved/cliphist
+
+### Mac-style copy/paste: keyd
+# niri cannot synthesise key presses, so Super+C / Super+X / Super+V are
+# remapped to copy / cut / paste below the compositor by keyd, configured in
+# system_files/etc/keyd/default.conf. Not in Fedora's repos, so the COPR is
+# enabled only for this install, like cliphist above.
+dnf5 -y copr enable alternateved/keyd
+dnf5 install -y keyd
+dnf5 -y copr disable alternateved/keyd
+systemctl enable keyd
 
 # Notes on the supporting pieces, since the reasoning is not obvious from the
 # package list alone:
