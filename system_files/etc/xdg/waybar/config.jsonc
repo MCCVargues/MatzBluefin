@@ -37,7 +37,7 @@
   },
 
   "custom/quick": {
-    "format": "",
+    "format": "\uf1de",
     "tooltip-format": "Quick settings"
   },
 
@@ -58,8 +58,8 @@
   "niri/workspaces": {
     "format": "{icon}",
     "format-icons": {
-      "active": "",
-      "default": ""
+      "active": "\uf111",
+      "default": "\uf10c"
     }
   },
 
@@ -91,16 +91,16 @@
   "idle_inhibitor": {
     "format": "{icon}",
     "format-icons": {
-      "activated": "",
-      "deactivated": ""
+      "activated": "\uf06e",
+      "deactivated": "\uf070"
     },
     "tooltip-format-activated": "Idle inhibited — screen will stay on",
     "tooltip-format-deactivated": "Idle handling active"
   },
 
   "wireplumber": {
-    "format": " {volume}%",
-    "format-muted": "",
+    "format": "\uf028 {volume}%",
+    "format-muted": "\uf026 muted",
     "on-click": "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle",
     "on-click-right": "pavucontrol",
     "on-scroll-up": "wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.05+ -l 1.0",
@@ -109,10 +109,10 @@
   },
 
   "network": {
-    "format-wifi": "  {signalStrength}%",
-    "format-ethernet": "",
-    "format-linked": "",
-    "format-disconnected": "",
+    "format-wifi": "\uf1eb  {signalStrength}%",
+    "format-ethernet": "\uf0e8",
+    "format-linked": "\uf0e8",
+    "format-disconnected": "\uf127",
     "tooltip-format-wifi": "{essid} ({signalStrength}%)\n{ipaddr}",
     "tooltip-format-ethernet": "{ifname}\n{ipaddr}",
     "tooltip-format-disconnected": "Disconnected",
@@ -120,9 +120,9 @@
   },
 
   "bluetooth": {
-    "format": "",
-    "format-connected": " {num_connections}",
-    "format-disabled": "",
+    "format": "\uf293",
+    "format-connected": "\uf294 {num_connections}",
+    "format-disabled": "\uf293 off",
     "tooltip-format": "{controller_alias}\t{controller_address}",
     "tooltip-format-connected": "{controller_alias}\n{device_enumerate}",
     "tooltip-format-enumerate-connected": "{device_alias}\t{device_address}",
@@ -130,22 +130,22 @@
   },
 
   "cpu": {
-    "format": " {usage}%",
+    "format": "\uf2db {usage}%",
     "interval": 5,
     "on-click": "gnome-system-monitor"
   },
 
   "memory": {
-    "format": " {percentage}%",
+    "format": "\uf233 {percentage}%",
     "tooltip-format": "{used:0.1f} GiB / {total:0.1f} GiB",
     "interval": 5,
     "on-click": "gnome-system-monitor"
   },
 
   "temperature": {
-    "format": " {temperatureC}°C",
+    "format": "\uf2c9 {temperatureC}°C",
     "critical-threshold": 85,
-    "format-critical": " {temperatureC}°C",
+    "format-critical": "\uf2c7 {temperatureC}°C",
     "interval": 5
   },
 
@@ -155,9 +155,9 @@
       "critical": 10
     },
     "format": "{icon} {capacity}%",
-    "format-charging": " {capacity}%",
-    "format-plugged": " {capacity}%",
-    "format-icons": ["", "", "", "", ""],
+    "format-charging": "\uf0e7 {capacity}%",
+    "format-plugged": "\uf1e6 {capacity}%",
+    "format-icons": ["\uf244", "\uf243", "\uf242", "\uf241", "\uf240"],
     "tooltip-format": "{timeTo} ({power:0.1f} W)"
   }
 }

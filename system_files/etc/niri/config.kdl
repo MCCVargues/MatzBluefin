@@ -211,8 +211,8 @@ binds {
     Super+Alt+L hotkey-overlay-title="Lock the Screen: swaylock" { spawn "swaylock" "-f"; }
 
     // Dismiss notifications.
-    Mod+N { spawn "makoctl" "dismiss"; }
-    Mod+Shift+N { spawn "makoctl" "dismiss" "--all"; }
+    Mod+BackSpace { spawn "makoctl" "dismiss"; }
+    Mod+Shift+BackSpace { spawn "makoctl" "dismiss" "--all"; }
 
     // Clipboard history picker.
     Mod+Y hotkey-overlay-title="Clipboard History: cliphist" {
@@ -380,10 +380,10 @@ binds {
     Mod+Shift+Minus { set-window-height "-10%"; }
     Mod+Shift+Equal { set-window-height "+10%"; }
 
-    // Floating and tabbed. (Not C/V: Super+C/V are copy/paste, see /etc/keyd.)
+    // Floating and tabbed. (Not C/V/W: Super+C/V/W are copy/paste/close tab, see /etc/keyd.)
     Mod+B       { toggle-window-floating; }
     Mod+Shift+B { switch-focus-between-floating-and-tiling; }
-    Mod+W       { toggle-column-tabbed-display; }
+    Mod+Semicolon { toggle-column-tabbed-display; }
 
     // Screenshots.
     Print { screenshot; }
