@@ -215,6 +215,45 @@ install -D -m0755 /usr/lib64/wine/x86_64-windows/wineasio64.dll \
 install -D -m0755 /usr/lib64/wine/x86_64-unix/wineasio64.dll.so \
     /usr/lib64/wine-wow64/wine/x86_64-unix/wineasio.dll.so
 
+### Virtual machines: libvirt + QEMU/KVM + virt-manager
+# Mainly for a Windows guest (SigmaStudio for the ADAU1466 and its USBi
+# programmer, passed through to the guest as a USB host device).
+#
+# - libvirt-daemon-kvm pulls in the modular daemons (virtqemud, virtnetworkd,
+#   ...) with the QEMU driver; libvirt-daemon-config-network adds the "default"
+#   NAT network so a fresh guest has internet without extra setup.
+# - swtpm + edk2-ovmf give guests an emulated TPM 2.0 and UEFI/Secure Boot,
+#   both of which the Windows 11 installer refuses to run without.
+dnf5 install -y \
+    libvirt-daemon-kvm \
+    libvirt-daemon-config-network \
+    qemu-kvm \
+    virt-manager \
+    virt-viewer \
+    swtpm \
+    swtpm-tools \
+    edk2-ovmf
+
+# Fedora's presets already enable these, but say so explicitly so a preset
+# change upstream can't silently leave virt-manager with nothing to talk to.
+systemctl enable \
+    virtqemud.socket \
+    virtnetworkd.socket \
+    virtstoraged.socket \
+    virtnodedevd.socket \
+    virtsecretd.socket \
+    virtlogd.socket \
+    virtlockd.socket
+
+# The libvirt RPMs create their state directories under /var at install time,
+# but /var from the image is only copied on a fresh install, never into an
+# existing deployment. system_files/usr/lib/tmpfiles.d/libvirt-var.conf
+# recreates them at boot with the RPMs' ownership and modes (and the SELinux
+# labels from policy, which tmpfiles applies on creation).
+#
+# Group membership is per-user and lives in /etc/group, so it can't be baked
+# in: run `ujust libvirt-setup` once after booting this image.
+
 #### Example for enabling a System Unit File
 
 systemctl enable podman.socket

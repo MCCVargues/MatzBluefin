@@ -290,3 +290,38 @@ fl-studio-reset:
     [[ $reply == yes ]] || { echo "aborted"; exit 1; }
     rm -rf "$prefix"
     echo "removed $prefix"
+
+# Let the current user manage system VMs in virt-manager without a password
+# prompt. Run once after booting an image with libvirt; log out and back in
+# afterwards for the new group to apply.
+[group('vm')]
+libvirt-setup:
+    #!/usr/bin/bash
+    set -euo pipefail
+    user="${SUDO_USER:-$USER}"
+    if ! command -v virt-manager >/dev/null; then
+        echo "virt-manager is not installed; reboot into an image built with libvirt first." >&2
+        exit 1
+    fi
+    # The libvirt group comes from /usr/lib/sysusers.d/libvirt.conf. sysusers
+    # normally adds it to /etc/group at boot; run it again in case it hasn't,
+    # since usermod only edits groups that are listed in /etc/group.
+    if ! grep -q '^libvirt:' /etc/group; then
+        sudo systemd-sysusers
+    fi
+    if ! grep -q '^libvirt:' /etc/group; then
+        echo "libvirt group still missing from /etc/group" >&2
+        exit 1
+    fi
+    if id -nG "$user" | tr ' ' '\n' | grep -qx libvirt; then
+        echo "$user is already in the libvirt group."
+    else
+        sudo usermod -aG libvirt "$user"
+        echo "Added $user to the libvirt group. Log out and back in for it to apply."
+    fi
+    # Bring up the default NAT network now and on every boot.
+    if sudo virsh -c qemu:///system net-info default >/dev/null 2>&1; then
+        sudo virsh -c qemu:///system net-autostart default >/dev/null
+        sudo virsh -c qemu:///system net-start default >/dev/null 2>&1 || true
+    fi
+    echo "Open virt-manager and create a VM under QEMU/KVM (qemu:///system)."
